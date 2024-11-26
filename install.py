@@ -120,7 +120,8 @@ def install_bin(args):
 def install():
     alias_config = get_alias_config()
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="pybin installation program, you can define additional "
+                                                 "configuration file: $HOME/.pybin_config.json")
     parser.add_argument("--disable-alias", choices=list(alias_config.keys()), nargs="*", help="disable choices alias")
     parser.add_argument("--ignore-error", action="store_true", help="ignore install requirements error")
     args = parser.parse_args()
