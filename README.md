@@ -15,6 +15,10 @@ cd pybin
 ```
 
 2. **安装环境**
+> <small>_首次安装先使用pip或pip3安装环境依赖，重装可省略_</small>
+```sh
+pip3 install -r requirements.txt
+```
 > <small>_首次安装会提示输入密码，该密码用于生成配置文件_</small>
 ```sh
 python3 install.py
