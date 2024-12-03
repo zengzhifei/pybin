@@ -1420,6 +1420,7 @@ def stats_pb_compute():
         print(f"{this_key}\t{all_values}")
 
 
+@runtime(RuntimeEnv.SHELL)
 def stats_pb_convert():
     parser = argparse.ArgumentParser()
     parser.add_argument("--type", type=str, default="sp.worker.OLAPUpdateMessage")
