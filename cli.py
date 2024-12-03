@@ -1420,6 +1420,19 @@ def stats_pb_compute():
         print(f"{this_key}\t{all_values}")
 
 
+def stats_pb_convert():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--type", type=str, default="sp.worker.OLAPUpdateMessage")
+    parser.add_argument("--path", type=str, default="~/impl/worker-interface/baidu/fc-report/worker-interface/proto/")
+    parser.add_argument("pb", type=str)
+    args = parser.parse_args()
+
+    cmd = f"message_file_reader ${args.pb} ${args.type} ${args.path}"
+    print(cmd)
+
+    sys.exit(250)
+
+
 def stats_run_bin():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--datasource", type=str, required=True)

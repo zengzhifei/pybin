@@ -56,4 +56,15 @@ goinstance() {
     fi
 }
 
+stats_pb_convert() {
+    result=$(cli.py "stats_pb_convert" "$@")
+
+    if [ $? -eq 250 ]; then
+        eval "$result"
+    elif [ -n "$result" ]; then
+        # shellcheck disable=SC2039
+        echo -e "$result"
+    fi
+}
+
 
