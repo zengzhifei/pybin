@@ -95,6 +95,9 @@ def sourcerc():
         else:
             sdk.run_shell(f'source {profile}')
 
+    py_profile = sdk.get_home().joinpath(".pybin").joinpath("pybin_profile")
+    sdk.run_shell(f'source {py_profile}')
+
 
 def dusort():
     parser = argparse.ArgumentParser()
