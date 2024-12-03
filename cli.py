@@ -1427,7 +1427,7 @@ def stats_pb_convert():
     parser.add_argument("pb", type=str)
     args = parser.parse_args()
 
-    cmd = f"message_file_reader ${args.pb} ${args.type} ${args.path}"
+    cmd = f"message_file_reader {args.pb} {args.type} {args.path}"
     print(cmd)
 
     sys.exit(250)
