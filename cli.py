@@ -1386,9 +1386,9 @@ def stats_service_check():
 
 def stats_pb_compute():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--family", type=str, required=True)
-    parser.add_argument("--keys", type=str, nargs="+", required=True)
-    parser.add_argument("--values", type=str, nargs="+", required=True)
+    parser.add_argument("--family", type=str)
+    parser.add_argument("--keys", type=str, nargs="+")
+    parser.add_argument("--values", type=str, nargs="+")
     parser.add_argument("pb", type=str)
     args = parser.parse_args()
 
@@ -1398,6 +1398,12 @@ def stats_pb_compute():
     compute_family = args.family
     compute_keys = args.keys
     compute_value_keys = args.values
+
+    if (not compute_family) or (not compute_keys) or (not compute_value_keys):
+        cmd = f"cat {args.pb} | awk '{{print $2}}' | sort | uniq -c"
+        process = sdk.run_shell(cmd)
+        print(process.stdout)
+        return
 
     for text in contents:
         family = text.split('type: ')[1].split(' ')[0].strip('"')
