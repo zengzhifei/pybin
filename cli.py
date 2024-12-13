@@ -1212,7 +1212,7 @@ def pandas():
 
 def table2markdown():
     parser = argparse.ArgumentParser()
-    parser.add_argument("table", type=str, required=False)
+    parser.add_argument("table", type=str, nargs="?")
     args = parser.parse_args()
 
     if args.table is not None:
