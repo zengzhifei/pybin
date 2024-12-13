@@ -899,15 +899,15 @@ def php_deploy():
 def gomysql():
     parser = argparse.ArgumentParser()
     parser.add_argument("tag", type=str)
-    parser.add_argument("cmd", type=str, nargs="?")
+    parser.add_argument("cmds", type=str, nargs="*")
     args = parser.parse_args()
 
     config = sdk.get_config(args.tag)
 
-    if args.cmd is None:
+    if args.cmds is None:
         cmd = f'mysql -A {config}'
     else:
-        cmd = f'mysql -A {config} {args.cmd}'
+        cmd = f'mysql -A {config} {" ".join(args.cmds)}'
 
     print(cmd)
 
@@ -918,7 +918,7 @@ def gomysql():
 def goredis():
     parser = argparse.ArgumentParser()
     parser.add_argument("tag", type=str)
-    parser.add_argument("cmd", type=str, nargs="?")
+    parser.add_argument("cmds", type=str, nargs="*")
     args = parser.parse_args()
 
     config = sdk.get_config(args.tag)
@@ -932,10 +932,10 @@ def goredis():
         port = int(info['port'])
         conn = f"-h {ip} -p {port}"
 
-    if args.cmd is None:
+    if args.cmds is None:
         cmd = f'redis-cli {conn} --no-auth-warning --raw'
     else:
-        cmd = f'redis-cli {conn} --no-auth-warning --raw {args.cmd}'
+        cmd = f'redis-cli {conn} --no-auth-warning --raw {" ".join(args.cmds)}'
 
     print(cmd)
 
@@ -1208,6 +1208,24 @@ def pandas():
                        usecols=args.usecols)
     for value in df.values:
         print("\t".join(map(str, value)))
+
+
+def table2markdown():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("table", type=str, required=False)
+    args = parser.parse_args()
+
+    if args.table is not None:
+        lines = sdk.read_file(args.table)
+    else:
+        lines = sys.stdin.read().splitlines()
+
+    table = ''
+    for line in lines:
+        rows = line.split('\t')
+        table += '| ' + ' | '.join(map(str, rows)) + ' |\n'
+
+    print(table)
 
 
 def get_stream_wave():
