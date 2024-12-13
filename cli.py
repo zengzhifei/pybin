@@ -1221,7 +1221,7 @@ def table2markdown():
         lines = sys.stdin.read().splitlines()
 
     columns = lines[0].split('\t')
-    table = '| ' + ' | '.join(columns) + ' |\n'
+    table = '| ' + ' | '.join(['' for _ in columns]) + ' |\n'
     table += '| ' + ' | '.join(['---' for _ in columns]) + ' |\n'
     for line in lines:
         rows = line.split('\t')
