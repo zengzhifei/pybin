@@ -54,6 +54,14 @@ def install_bin(args):
     root_path = sdk.get_home().joinpath(".pybin")
     current_path = Path.absolute(Path(__file__)).parent
 
+    config = sdk.read_json_file(str(current_path.joinpath("config.json")))
+    other_config_file = sdk.get_home().joinpath(".pybin_config.json")
+    if other_config_file.exists():
+        other_config = sdk.read_json_file(str(other_config_file))
+    else:
+        other_config = {}
+    sdk.merge_two_levels_dict(config, other_config)
+
     if os.path.exists(root_path):
         shutil.rmtree(root_path)
     if not os.path.exists(root_path):
@@ -64,13 +72,6 @@ def install_bin(args):
     shutil.copy(current_path.joinpath("cli.py"), root_path)
     shutil.copy(current_path.joinpath("cli.sh"), root_path)
     shutil.copy(current_path.joinpath("__about__.py"), root_path)
-    config = sdk.read_json_file(str(current_path.joinpath("config.json")))
-    other_config_file = sdk.get_home().joinpath(".pybin_config.json")
-    if other_config_file.exists():
-        other_config = sdk.read_json_file(str(other_config_file))
-    else:
-        other_config = {}
-    sdk.merge_two_levels_dict(config, other_config)
     sdk.write_json_file(str(root_path.joinpath("config.json")), config)
 
     mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH

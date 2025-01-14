@@ -76,7 +76,7 @@ def pybin_install():
     os.chdir(source_path)
     process = sdk.run_shell(f"{sys.executable} install.py")
     print(process.stdout)
-    
+
 
 def pybin_config():
     parser = argparse.ArgumentParser()
