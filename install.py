@@ -95,7 +95,8 @@ def install_bin(args):
     py_profile = root_path.joinpath("pybin_profile")
     py_config = [
         f'source {root_path.joinpath("cli.sh")}',
-        f'export PATH="{root_path}:$PATH"'
+        f'export PATH="{root_path}:$PATH"',
+        f'export PYBIN_SOURCE_PATH="{current_path}"'
     ]
 
     alias_config = get_alias_config()

@@ -71,7 +71,14 @@ def pybin_info():
     print(f"function: \n{functions}")
 
 
-def print_config():
+def pybin_install():
+    source_path = os.environ.get("PYBIN_SOURCE_PATH")
+    os.chdir(source_path)
+    process = sdk.run_shell(f"{sys.executable} install.py")
+    print(process.stdout)
+    
+
+def pybin_config():
     parser = argparse.ArgumentParser()
     parser.add_argument("cmd_name", type=str)
     parser.add_argument("keys", type=str, nargs="*")
