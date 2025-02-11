@@ -194,6 +194,9 @@ def gitfetch():
     cmd = f"git branch {args.temp_branch} FETCH_HEAD && git checkout {args.origin_branch} && git merge {args.temp_branch} "
     process = sdk.run_shell(cmd)
     print(process.stdout)
+    cmd2 = "git branch -D {args.temp_branch}"
+    process2 = sdk.run_shell(cmd2)
+    print(process2.stdout)
 
 
 def saferm():
