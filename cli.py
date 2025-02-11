@@ -191,13 +191,8 @@ def gitfetch():
     parser.add_argument("--temp-branch", "-t", required=False, type=str, default="temp")
     args = parser.parse_args()
 
-    cmds = [
-        f"git branch {args.temp_branch} FETCH_HEAD",
-        f"git checkout {args.origin_branch}",
-        f"git merge {args.temp_branch}"
-    ]
-
-    process = sdk.run_cmd(cmds)
+    cmd = f"git branch {args.temp_branch} FETCH_HEAD && git checkout {args.origin_branch} && git merge {args.temp_branch} "
+    process = sdk.run_shell(cmd)
     print(process.stdout)
 
 
