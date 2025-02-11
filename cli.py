@@ -185,6 +185,22 @@ def gitrename():
     print(sdk.run_shell(cmd).stdout)
 
 
+def gitfetch():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--origin-branch", "-o", required=False, type=str, default="master")
+    parser.add_argument("--temp-branch", "-t", required=False, type=str, default="temp")
+    args = parser.parse_args()
+
+    cmds = [
+        f"git branch {args.temp_branch} FETCH_HEAD",
+        f"git checkout {args.origin_branch}",
+        f"git merge {args.temp_branch}"
+    ]
+
+    process = sdk.run_cmd(cmds)
+    print(process.stdout)
+
+
 def saferm():
     parser = argparse.ArgumentParser()
     parser.add_argument("files", nargs="+")
