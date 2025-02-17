@@ -1634,7 +1634,7 @@ def bp_sub():
     os.rename(Path("./data/out_data"), Path(f"./data/{args.pipename}.sub"))
 
     if args.out_path and os.path.exists(args.out_path):
-        shutil.move(Path(f"./data/{args.pipename}.sub"), Path(f"{args.out_path}"))
+        Path(f"./data/{args.pipename}.sub").rename(f"{args.out_path}/{args.pipename}.sub")
 
 
 @runtime(RuntimeEnv.NONE)
