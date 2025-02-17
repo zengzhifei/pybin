@@ -1602,6 +1602,7 @@ def bp_sub():
     parser.add_argument("--pipelet_id", type=int, required=False, default=1)
     parser.add_argument("--startpoint", type=int, required=False, default=-1)
     parser.add_argument("--sub_count", type=int, required=False, default=1)
+    parser.add_argument("--out_path", type=str, required=False)
     args = parser.parse_args()
 
     root_path = sdk.get_config("root_path")
@@ -1631,6 +1632,9 @@ def bp_sub():
     print(process.stdout)
 
     os.rename(Path("./data/out_data"), Path(f"./data/{args.pipename}.sub"))
+
+    if args.out_path and os.path.exists(args.out_path):
+        shutil.move(Path(f"./data/{args.pipename}.sub"), Path(f"{args.out_path}"))
 
 
 @runtime(RuntimeEnv.NONE)
