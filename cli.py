@@ -1591,6 +1591,46 @@ def stats_run_bin():
             os.rename(backup_dict_conf, Path(dict_conf))
 
 
+def bp_sub():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cluster", type=str, required=True)
+    parser.add_argument("--meta_host", type=str, required=True)
+    parser.add_argument("--pipename", type=str, required=True)
+    parser.add_argument("--username", type=str, required=True)
+    parser.add_argument("--password", type=str, required=True)
+    parser.add_argument("--pipelet_id", type=int, required=False, default=1)
+    parser.add_argument("--startpoint", type=int, required=False, default=-1)
+    parser.add_argument("--sub_count", type=int, required=False, default=1)
+    parser.add_argument("--output_path", type=str, required=False, default="./data")
+    args = parser.parse_args()
+
+    root_path = sdk.get_config("root_path")
+    os.chdir(root_path)
+
+    sdk.modify_file_by_patten(str(Path("./conf/bigpipe.conf")),
+                              r'(root_path:\s*)(.*)', lambda m: f"{m.group(1)}{args.cluster}")
+    sdk.modify_file_by_patten(str(Path("./conf/bigpipe.conf")),
+                              r'(meta_host:\s*)(.*)', lambda m: f"{m.group(1)}{args.meta_host}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(pipename:\s*)(.*)', lambda m: f"{m.group(1)}{args.pipename}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(username:\s*)(.*)', lambda m: f"{m.group(1)}{args.username}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(password:\s*)(.*)', lambda m: f"{m.group(1)}{args.password}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(pipelet_id:\s*)(.*)', lambda m: f"{m.group(1)}{args.pipelet_id}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(startpoint:\s*)(.*)', lambda m: f"{m.group(1)}{args.startpoint}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(sub_count:\s*)(.*)', lambda m: f"{m.group(1)}{args.sub_count}")
+    sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
+                              r'(output_path:\s*)(.*)', lambda m: f"{m.group(1)}{args.output_path}")
+
+    cmd = "./bin/bp_tool"
+    process = sdk.run_shell(cmd)
+    print(process.stdout)
+
+
 @runtime(RuntimeEnv.NONE)
 def main():
     os.environ[RuntimeKey.MODE.value] = RuntimeMode.PRODUCT.value

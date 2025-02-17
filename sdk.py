@@ -123,6 +123,16 @@ def modify_file(filepath: str, old_text: str, new_text: str):
         file.write(content)
 
 
+def modify_file_by_patten(filepath: str, pattern: str, replace: Callable[[re.Match], str]):
+    with open(filepath, 'r') as file:
+        lines = file.readlines()
+
+    with open(filepath, 'w') as file:
+        for line in lines:
+            line = re.sub(pattern, replace, line)
+            file.write(line)
+
+
 def upload_file(url: str, file_path: str) -> Response:
     with open(file_path, 'rb') as f:
         files = {'file': f}
