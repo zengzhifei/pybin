@@ -1595,7 +1595,7 @@ def bp_sub():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cluster", type=str, required=True)
     parser.add_argument("--meta_host", type=str, required=True)
-    parser.add_argument("--pack", type=bool, required=False, default=True)
+    parser.add_argument("--pack", action="store_true")
     parser.add_argument("--pipename", type=str, required=True)
     parser.add_argument("--username", type=str, required=True)
     parser.add_argument("--password", type=str, required=True)
@@ -1608,12 +1608,14 @@ def bp_sub():
     root_path = sdk.get_config("root_path")
     os.chdir(root_path)
 
+    cluster = '/' + args.cluster if not args.cluster.startswith('/') else args.cluster
     sdk.modify_file_by_patten(str(Path("./conf/bigpipe.conf")),
-                              r'(root_path:\s*)(.*)', lambda m: f"{m.group(1)}{args.cluster}")
+                              r'(root_path:\s*)(.*)', lambda m: f"{m.group(1)}{cluster}")
     sdk.modify_file_by_patten(str(Path("./conf/bigpipe.conf")),
                               r'(meta_host:\s*)(.*)', lambda m: f"{m.group(1)}{args.meta_host}")
+    pack = 'True' if args.pack else 'False'
     sdk.modify_file_by_patten(str(Path("./conf/gflags.conf")),
-                              r'(--pack=\s*)(.*)', lambda m: f"{m.group(1)}{args.pack}")
+                              r'(--pack=\s*)(.*)', lambda m: f"{m.group(1)}{pack}")
     sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
                               r'(pipename:\s*)(.*)', lambda m: f"{m.group(1)}{args.pipename}")
     sdk.modify_file_by_patten(str(Path("./conf/bp.conf")),
