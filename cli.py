@@ -1385,7 +1385,7 @@ def stats_service_process():
             end_line = 0
             for i in range(len(contents)):
                 line = contents[i]
-                if line.strip().startswith("from (") or line.strip().startswith(
+                if line.strip().startswith("from ") or line.strip().startswith(
                         "statsengine =") or line.strip().startswith("read_common_datasource("):
                     start_line = i + 1
                     continue
@@ -1405,7 +1405,7 @@ def stats_service_process():
             ]
             codes.insert(0, "\n".join(head))
             name = f"'{args.name}'" if args.name else None
-            codes.append(f"statsengine.print(format={args.format}, name={name}, families={args.families})")
+            codes.append(f"statsengine.print(format={args.format}, name={name}, families={args.families})\n")
             sdk.write_file(temp_file.name, codes)
             if args.debug:
                 print(temp_file.name)
