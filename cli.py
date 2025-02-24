@@ -1287,6 +1287,7 @@ def stats_service_process():
     parser.add_argument("--name", type=str)
     parser.add_argument("--families", type=str, nargs="*")
     parser.add_argument("-f", "--format", action="store_true")
+    parser.add_argument("-d", "--debug", action="store_true")
     parser.add_argument("stats_service_file", type=str)
     args = parser.parse_args()
 
@@ -1377,7 +1378,8 @@ def stats_service_process():
             return op
 
     def do_process():
-        with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        is_delete = False if args.debug else True
+        with tempfile.NamedTemporaryFile(delete=is_delete) as temp_file:
             contents = sdk.read_file(args.stats_service_file)
             start_line = 0
             end_line = 0
@@ -1405,6 +1407,8 @@ def stats_service_process():
             name = f"'{args.name}'" if args.name else None
             codes.append(f"statsengine.print(format={args.format}, name={name}, families={args.families})")
             sdk.write_file(temp_file.name, codes)
+            if args.debug:
+                print(temp_file.name)
             process = sdk.run_cmd([sys.executable, temp_file.name])
             print(process.stdout)
 
