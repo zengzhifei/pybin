@@ -1383,10 +1383,11 @@ def stats_service_process():
             end_line = 0
             for i in range(len(contents)):
                 line = contents[i]
-                if line.strip().startswith("read_common_datasource("):
+                if line.strip().startswith("from (") or line.strip().startswith(
+                        "statsengine =") or line.strip().startswith("read_common_datasource("):
                     start_line = i + 1
                     continue
-                if line.strip().startswith("def main():"):
+                if line.strip().startswith("def main():") or line.strip().startswith("if __name__ == '__main__'"):
                     end_line = i
                     break
             codes = contents[start_line:end_line]
