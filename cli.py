@@ -1196,24 +1196,31 @@ def concurrency():
 def timeformator():
     parser = argparse.ArgumentParser()
     parser.add_argument("--format", type=str, default="%Y-%m-%d %H:%M:%S")
-    parser.add_argument("timestamp", type=int, nargs="?")
+    parser.add_argument("--from_ts", action="store_true")
+    parser.add_argument("time_str", type=str)
     args = parser.parse_args()
 
-    if args.timestamp is not None:
-        timestamps = [args.timestamp]
+    if args.time_str is not None:
+        time_strs = args.time_str
     else:
-        timestamps = sys.stdin.read().strip().split('\n')
+        time_strs = sys.stdin.read().strip().split('\n')
 
-    for timestamp in timestamps:
-        if len(str(timestamp)) == 13:
-            timestamp = int(timestamp) / 1000
-        elif len(str(timestamp)) == 10:
-            timestamp = int(timestamp)
-            pass
-        else:
-            raise ValueError("无效的时间戳")
-        formatted_time = datetime.fromtimestamp(timestamp).strftime(args.format)
-        print(formatted_time)
+    if args.from_ts:
+        for timestamp in time_strs:
+            if len(str(timestamp)) == 13:
+                timestamp = int(timestamp) / 1000
+            elif len(str(timestamp)) == 10:
+                timestamp = int(timestamp)
+                pass
+            else:
+                raise ValueError("无效的时间戳")
+            formatted_time = datetime.fromtimestamp(timestamp).strftime(args.format)
+            print(formatted_time)
+    else:
+        for time_str in time_strs:
+            time_array = time.strptime(time_str, args.format)
+            timestamp = int(time.mktime(time_array))
+            print(timestamp)
 
 
 def pandas():
