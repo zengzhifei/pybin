@@ -1201,7 +1201,7 @@ def timeformator():
     args = parser.parse_args()
 
     if args.time_str is not None:
-        time_strs = args.time_str
+        time_strs = [args.time_str]
     else:
         time_strs = sys.stdin.read().strip().split('\n')
 
