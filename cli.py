@@ -1196,8 +1196,8 @@ def concurrency():
 def timeformator():
     parser = argparse.ArgumentParser()
     parser.add_argument("--format", type=str, default="%Y-%m-%d %H:%M:%S")
-    parser.add_argument("--from_ts", action="store_true")
-    parser.add_argument("time_str", type=str)
+    parser.add_argument("--from-ts", action="store_true")
+    parser.add_argument("time_str", type=str, nargs="?")
     args = parser.parse_args()
 
     if args.time_str is not None:
