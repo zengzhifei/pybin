@@ -448,6 +448,17 @@ def tolower():
     print(text.lower())
 
 
+def count_keyword_lines():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--keyword", type=str, required=True)
+    parser.add_argument("file", type=str)
+    args = parser.parse_args()
+
+    cmd = f"grep -rHn --include='{args.file}' '{args.keyword}' . | awk -F: '{{a[$1]++}} END{{for(f in a) print f \": \" a[f]}}'"
+    process = sdk.run_shell(cmd)
+    print(process.stdout)
+
+
 def hi():
     parser = argparse.ArgumentParser()
     parser.add_argument("--text", type=str, nargs="*")
