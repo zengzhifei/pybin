@@ -1667,7 +1667,7 @@ def get_doris_export_fail_afs():
     parser.add_argument("--grep", type=str, required=True)
     args = parser.parse_args()
 
-    cmd = f"hadooproxy yinglong_doirs fs -- -ls /user/charge_cpm/huaibeibei/flink_data/ingester_data/error | grep -i '{args.grep}'"
+    cmd = f"hadooproxy yinglong_doris fs -- -ls /user/charge_cpm/huaibeibei/flink_data/ingester_data/error | grep -i '{args.grep}'"
     process = sdk.run_shell(cmd)
     if not process.stdout.strip():
         return
@@ -1676,7 +1676,7 @@ def get_doris_export_fail_afs():
     print(f"get size: {len(paths)}")
     for path in paths:
         print(path)
-        getcmd = f"hadooproxy yinglong_doirs fs -- -get {path} ."
+        getcmd = f"hadooproxy yinglong_doris fs -- -get {path} ."
         sdk.run_shell(getcmd)
 
 
