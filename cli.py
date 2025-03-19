@@ -1674,8 +1674,9 @@ def get_doris_export_fail_afs():
     lines = process.stdout.strip().split('\n')
     paths = [line.split()[-1] for line in lines if line.split()]
     print(f"get size: {len(paths)}")
+    i = 0
     for path in paths:
-        print(path)
+        print(f"{++i}\t{path}")
         getcmd = f"hadooproxy yinglong_doris fs -- -get {path} ."
         sdk.run_shell(getcmd)
 
