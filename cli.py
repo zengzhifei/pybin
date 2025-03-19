@@ -1662,6 +1662,24 @@ def bp_sub():
         Path(f"./data/{args.pipename}.sub").rename(f"{args.out_path}/{args.pipename}.sub")
 
 
+def get_doris_export_fail_afs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--grep", type=str, required=True)
+    args = parser.parse_args()
+
+    cmd = f"hadooproxy yinglong_doirs fs -- -ls /user/charge_cpm/huaibeibei/flink_data/ingester_data/error | grep -i '{args.grep}'"
+    process = sdk.run_shell(cmd)
+    if not process.stdout.strip():
+        return
+    lines = process.stdout.strip().split('\n')
+    paths = [line.split()[-1] for line in lines if line.split()]
+    print(f"get size: {len(paths)}")
+    for path in paths:
+        print(path)
+        getcmd = f"hadooproxy yinglong_doirs fs -- -get {path} ."
+        sdk.run_shell(getcmd)
+
+
 @runtime(RuntimeEnv.NONE)
 def main():
     os.environ[RuntimeKey.MODE.value] = RuntimeMode.PRODUCT.value
