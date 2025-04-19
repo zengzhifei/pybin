@@ -1030,11 +1030,13 @@ def opssh():
     parser.add_argument("--bns", type=str, required=True, help="bns name or path")
     parser.add_argument("--limit", type=int)
     parser.add_argument("--concurrent", type=int, default=20, help="concurrent execute, default 20")
+    parser.add_argument("--username", type=str, required=False)
     parser.add_argument("cmd", type=str)
     args = parser.parse_args()
 
     app = args.bns
     limit = args.limit
+    username = args.username
     separator = '=' * 20
     red = '\033[91m'
     reset = '\033[0m'
@@ -1047,7 +1049,10 @@ def opssh():
     tasks = services if limit is None or limit > len(services) else services[:limit]
 
     def handle(lock, task):
-        instance = task['instance']
+        if username:
+            instance = f"{username}@{task['instance']}"
+        else:
+            instance = task['instance']
         colored_name = f"{red}{instance}{reset}"
         cmd = f'ssh -o StrictHostKeyChecking=no -o PasswordAuthentication=no -o ConnectionAttempts=2 -o ' \
               f'ConnectTimeout=4 -n --matrix {instance} "{args.cmd}" '
