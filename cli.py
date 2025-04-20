@@ -1713,7 +1713,7 @@ def cvt_diff():
                 end = file_end_number
             else:
                 end = int(numbers[i + 1]) - 1
-            split_diff = f"cat {args.file} | sed -n '{numbers[i]},{end}p' > {file_name}"
+            split_diff = f"cat {file} | sed -n '{numbers[i]},{end}p' > {file_name}"
             sdk.run_shell(split_diff)
             print(file_name)
 
