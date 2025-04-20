@@ -1692,14 +1692,16 @@ def cvt_diff():
     args = parser.parse_args()
 
     for file in args.files:
+        search_end_cmd = f"wc -l {file} | awk '{{print $1}}'"
+        process = sdk.run_shell(search_end_cmd)
+        file_end_number = int(process.stdout)
+        if file_end_number == 0:
+            continue
+
         search_line_cmd = f"cat {file} | grep -nE ':new_file|:old_file'"
         print(search_line_cmd)
         process = sdk.run_shell(search_line_cmd)
         lines = process.stdout.splitlines()
-
-        search_end_cmd = f"wc -l {file} | awk '{{print $1}}'"
-        process = sdk.run_shell(search_end_cmd)
-        file_end_number = int(process.stdout)
 
         numbers = []
         file_ids = []
@@ -1721,7 +1723,7 @@ def cvt_diff():
 
 @runtime(RuntimeEnv.NONE)
 def main():
-    os.environ[RuntimeKey.MODE.value] = RuntimeMode.DEBUG.value
+    os.environ[RuntimeKey.MODE.value] = RuntimeMode.PRODUCT.value
     sys.excepthook = sdk.handle_exception_hook
 
     if os.path.basename(os.path.realpath(__file__)) == os.path.basename(sys.argv[0]):
