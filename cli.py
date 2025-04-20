@@ -1688,33 +1688,34 @@ def get_doris_export_fail_afs():
 
 def cvt_diff():
     parser = argparse.ArgumentParser()
-    parser.add_argument("file", type=str)
+    parser.add_argument("files", type=str, nargs="+")
     args = parser.parse_args()
 
-    search_line_cmd = f"cat {args.file} | grep -nE ':new_file|:old_file'"
-    process = sdk.run_shell(search_line_cmd)
-    lines = process.stdout.splitlines()
+    for file in args.files:
+        search_line_cmd = f"cat {file} | grep -nE ':new_file|:old_file'"
+        process = sdk.run_shell(search_line_cmd)
+        lines = process.stdout.splitlines()
 
-    search_end_cmd = f"wc -l {args.file} | awk '{{print $1}}'"
-    process = sdk.run_shell(search_end_cmd)
-    file_end_number = int(process.stdout)
+        search_end_cmd = f"wc -l {file} | awk '{{print $1}}'"
+        process = sdk.run_shell(search_end_cmd)
+        file_end_number = int(process.stdout)
 
-    numbers = []
-    file_ids = []
-    for line in lines:
-        pairs = line.split(":", 1)
-        numbers.append(pairs[0])
-        file_ids.append(pairs[1])
+        numbers = []
+        file_ids = []
+        for line in lines:
+            pairs = line.split(":", 1)
+            numbers.append(pairs[0])
+            file_ids.append(pairs[1])
 
-    for i, file_id in enumerate(file_ids):
-        file_name = file_id.split()[0]
-        if (i + 1) >= len(numbers):
-            end = file_end_number
-        else:
-            end = int(numbers[i + 1]) - 1
-        split_diff = f"cat {args.file} | sed -n '{numbers[i]},{end}p' > {file_name}"
-        sdk.run_shell(split_diff)
-        print(file_name)
+        for i, file_id in enumerate(file_ids):
+            file_name = file_id.split()[0]
+            if (i + 1) >= len(numbers):
+                end = file_end_number
+            else:
+                end = int(numbers[i + 1]) - 1
+            split_diff = f"cat {args.file} | sed -n '{numbers[i]},{end}p' > {file_name}"
+            sdk.run_shell(split_diff)
+            print(file_name)
 
 
 @runtime(RuntimeEnv.NONE)
