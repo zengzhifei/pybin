@@ -1720,7 +1720,7 @@ def cvt_diff():
 
 @runtime(RuntimeEnv.NONE)
 def main():
-    os.environ[RuntimeKey.MODE.value] = RuntimeMode.PRODUCT.value
+    os.environ[RuntimeKey.MODE.value] = RuntimeMode.DEBUG.value
     sys.excepthook = sdk.handle_exception_hook
 
     if os.path.basename(os.path.realpath(__file__)) == os.path.basename(sys.argv[0]):
