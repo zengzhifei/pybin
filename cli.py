@@ -1699,7 +1699,6 @@ def cvt_diff():
             continue
 
         search_line_cmd = f"cat {file} | grep -nE ':new_file|:old_file'"
-        print(search_line_cmd)
         process = sdk.run_shell(search_line_cmd)
         lines = process.stdout.splitlines()
 
