@@ -1699,8 +1699,12 @@ def cvt_diff():
             continue
 
         search_line_cmd = f"cat {file} | grep -nE ':new_file|:old_file'"
-        process = sdk.run_shell(search_line_cmd)
-        lines = process.stdout.splitlines()
+        try:
+            process = sdk.run_shell(search_line_cmd)
+            lines = process.stdout.splitlines()
+        except RuntimeError:
+            print("no match")
+            continue
 
         numbers = []
         file_ids = []
