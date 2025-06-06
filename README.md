@@ -19,15 +19,16 @@ cd pybin
 ```sh
 pip3 install -r requirements.txt
 ```
-> <small>_首次安装会提示输入密码，该密码用于生成配置文件_</small>
-```sh
-python3 install.py
+
+> <small>_如果部分依赖无法安装，可尝试创建或更新~/.pip/pip.conf文件，添加以下镜像源，_</small>
+```
+[global]
+index-url = https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-3. **安装hooker**
-> <small>_安装hook会再次提示输入密码（请保证和安装环境时的密码一致），该密码用于git更新代码时自动更新配置文件_</small>
+3. **安装pybin**
 ```sh
-securehooker config.json
+python3 install.py
 ```
 
 ### 更新步骤
@@ -37,7 +38,7 @@ cd pybin
 git pull
 ```
 
-2. **更新环境**
+2. **更新pybin**
 ```sh
 python3 install.py
 ```
