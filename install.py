@@ -39,17 +39,6 @@ def install_requirements(args):
                 sys.exit(1)
 
 
-def install_config():
-    if Path.absolute(Path(__file__)).parent.joinpath("config.json").exists():
-        return 0
-
-    try:
-        subprocess.check_call([sys.executable, 'cli.py', 'securekeeper', '--type', 'dec', '--out',
-                               'config.json', 'config.json.sec'])
-    except subprocess.CalledProcessError:
-        sys.exit(1)
-
-
 def install_bin(args):
     root_path = sdk.get_home().joinpath(".pybin")
     current_path = Path.absolute(Path(__file__)).parent
@@ -130,7 +119,6 @@ def install():
 
     pre_version_check()
     install_requirements(args)
-    install_config()
     install_bin(args)
     print("installed successfully.")
 
