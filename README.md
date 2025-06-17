@@ -19,6 +19,10 @@ cd pybin
 ```sh
 pip3 install -r requirements.txt
 ```
+或
+```sh
+pip3 install --user -r requirements.txt
+```
 
 > <small>_如果部分依赖无法安装，可尝试创建或更新~/.pip/pip.conf文件，添加以下镜像源，_</small>
 ```
