@@ -813,7 +813,13 @@ def java_deploy_server():
             with open(filepath, 'wb') as f:
                 f.write(uploaded_file.file.read())
 
-            process = sdk.run_shell(f"javaserver --restart --debug -d {filepath}")
+            cmd = f"javaserver --restart --debug -d {filepath}"
+            if parse.query:
+                params = parse.query.split("&")
+                for param in params:
+                    pair = param.split("=", 1)
+                    cmd = f"{cmd} {pair[0]} {pair[1]}"
+            process = sdk.run_shell(cmd)
             handler.ok(process.stdout)
         else:
             handler.error("the route is invalid")
@@ -855,8 +861,9 @@ def java_deploy():
         raise RuntimeError(f"the package: {args.pkg} is not exist or choose error.\n{all_jar_files_str}")
 
     package = jar_files[0]
-    application = f"{os.path.dirname(package)}/classes/application.yml"
-    if not os.path.exists(application):
+    application_yaml = f"{os.path.dirname(package)}/classes/application.yml"
+    application_prop = f"{os.path.dirname(package)}/classes/application.properties"
+    if not os.path.exists(application_yaml) and not os.path.exists(application_prop):
         raise RuntimeError(f"the package: {args.pkg} maybe not a application.")
 
     print(f"ready to deploy package: {package}...", end="\n\n")
