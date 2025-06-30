@@ -15,6 +15,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import zlib
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -104,6 +105,17 @@ def sourcerc():
 
     py_profile = sdk.get_home().joinpath(".pybin").joinpath("pybin_profile")
     sdk.run_shell(f'source {py_profile}')
+
+
+def crc32_update():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('key', type=str)
+    args = parser.parse_args()
+
+    key = args.key
+    crc_value = zlib.crc32(key.encode())
+    crc_value &= 0xffffffff
+    print(crc_value)
 
 
 def dusort():
