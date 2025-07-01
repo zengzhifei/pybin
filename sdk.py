@@ -375,11 +375,11 @@ def run_popen(cmd: List[str], consumer: Callable[[Popen], None] = None) -> AnySt
 
 
 def iterate_process(condition: Callable[[str], bool], callback: Callable[[str, psutil.Process], None]) -> None:
-    user = os.getenv("USER")
+    uid = os.getuid()
     current_pid = os.getpid()
     for proc in psutil.process_iter([]):
         try:
-            if proc.pid == current_pid or user != proc.info['username'] or proc.info['cmdline'] is None:
+            if proc.pid == current_pid or uid != proc.uids().real or proc.info['cmdline'] is None:
                 continue
             process_name = " ".join(proc.info['cmdline']).strip()
             proc_name = process_name.lower()
