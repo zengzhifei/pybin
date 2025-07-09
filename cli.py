@@ -959,9 +959,9 @@ def gomysql():
     config = sdk.get_config(args.tag)
 
     if args.cmds is None:
-        cmd = f'mysql -A {config}'
+        cmd = f'mysql -A {config} --default-character-set=utf8'
     else:
-        cmd = f'mysql -A {config} {" ".join(args.cmds)}'
+        cmd = f'mysql -A {config} --default-character-set=utf8 {" ".join(args.cmds)}'
 
     print(cmd)
 
