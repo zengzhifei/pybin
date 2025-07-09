@@ -199,11 +199,14 @@ def gitrename():
 
 def gitfetch():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--origin-branch", "-o", required=False, type=str, default="master")
     parser.add_argument("--temp-branch", "-t", required=False, type=str, default="temp")
     args = parser.parse_args()
 
-    cmd = f"git branch {args.temp_branch} FETCH_HEAD && git checkout {args.origin_branch} && git merge {args.temp_branch} "
+    branch_cmd = f"git branch | grep '*' | awk '{{print $2}}'"
+    result = sdk.run_shell(branch_cmd)
+    branch: str = result.stdout
+    branch = branch.strip()
+    cmd = f"git branch {args.temp_branch} FETCH_HEAD && git checkout {branch} && git merge {args.temp_branch} "
     process = sdk.run_shell(cmd)
     print(process.stdout)
     cmd2 = f"git branch -D {args.temp_branch}"
@@ -654,7 +657,7 @@ def javaserver():
                 cmd = f"{cmd} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:{debug_port}"
             else:
                 cmd = f"{cmd} -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={debug_port}"
-        cmd = f"{cmd} -Dspring.profiles.active={args.env} -Drcc.envName={args.env}"
+        cmd = f"{cmd} -Dspring.profiles.active={args.env} -Drcc.envName={args.env} -Dfile.encoding=UTF-8"
         if args.data is not None:
             for data in args.data:
                 cmd = f"{cmd} -D{data}"
