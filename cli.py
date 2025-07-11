@@ -824,7 +824,7 @@ def java_deploy_server():
             file_dir = os.path.join(args.runtime, filename_without_ext)
             if not os.path.exists(file_dir):
                 os.mkdir(file_dir)
-            filepath = os.path.join(file_dir, filename)
+            filepath = os.path.join(str(file_dir), filename)
             with open(filepath, 'wb') as f:
                 f.write(uploaded_file.file.read())
 
@@ -885,6 +885,86 @@ def java_deploy():
 
     response = sdk.upload_file_with_curl(args.url, package)
     print(f"\n\n{response}")
+
+
+def file_deploy_server():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--port", type=int, default=8502)
+    parser.add_argument("-d", "--daemon", action="store_true")
+    parser.add_argument("--dir", type=str, required=True, help="file to save directory")
+    parser.add_argument("--dec", action="store_true", help="need to decompress?")
+    parser.add_argument("--cmd", type=str, required=False, help="if succeed command to run")
+    args = parser.parse_args()
+
+    def post_method(handler: BaseHTTPRequestHandler):
+        parse = urlparse(handler.path)
+        if parse.path == '/deploy':
+            form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
+                                    environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': handler.headers['Content-Type']})
+            uploaded_file = form['file']
+            filename = os.path.basename(uploaded_file.filename)
+            file_dir = args.dir
+            if not os.path.exists(file_dir):
+                os.mkdir(file_dir)
+            filepath = os.path.join(file_dir, filename)
+            file_home = os.path.join(file_dir, Path(filename).with_suffix('').stem)
+            with open(filepath, 'wb') as f:
+                f.write(uploaded_file.file.read())
+
+            if args.dec:
+                if os.path.exists(file_home):
+                    shutil.rmtree(file_home)
+                os.mkdir(file_home)
+                tar_cmd = f'tar -xzvf {filepath} -C {file_home}'
+                process = sdk.run_shell(tar_cmd)
+                print(process.stdout)
+                os.remove(filepath)
+
+            if args.cmd:
+                process = sdk.run_shell(args.cmd)
+                handler.ok(process.stdout)
+            else:
+                handler.ok("success.")
+        else:
+            handler.error("the route is invalid")
+
+    if not os.path.exists(args.dir):
+        raise RuntimeError(f"{args.dir} is not exists")
+
+    http_server = sdk.HttpServer(port=args.port, name=f"FileDeployServer:{args.port}")
+    http_server.set_post_method(method=post_method)
+    http_server.start(daemon=args.daemon)
+
+
+def file_deploy():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--file", type=str, required=False)
+    parser.add_argument("--url", type=str, required=True)
+    args = parser.parse_args()
+
+    need_remove = False
+    if args.file:
+        if not os.path.exists(args.file):
+            raise RuntimeError(f"{args.file} is not exists")
+        file = args.file
+    else:
+        project = os.path.basename(os.getcwd())
+        file = f'{project}.tar.gz'
+        tar_command = f'tar --no-mac-metadata -czf {file} *'
+        result = sdk.run_shell(tar_command)
+        if result.returncode == 0:
+            need_remove = True
+            print("file has been successfully packed.")
+        else:
+            raise RuntimeError("packets has failed.")
+
+    try:
+        print(f"ready to deploy file: {file}...", end="\n\n")
+        response = sdk.upload_file_with_curl(args.url, file)
+        print(f"\n\n{response}")
+    finally:
+        if need_remove:
+            os.remove(file)
 
 
 def php_deploy():
