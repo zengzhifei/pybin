@@ -1,5 +1,16 @@
 #!/usr/bin/env sh
 
+sourcerc() {
+    result=$(cli.py "sourcerc" "$@")
+
+    if [ $? -eq 250 ]; then
+        eval "$result"
+    elif [ -n "$result" ]; then
+        # shellcheck disable=SC2039
+        echo -e "$result"
+    fi
+}
+
 scd() {
     result=$(cli.py "scd" "$@")
 

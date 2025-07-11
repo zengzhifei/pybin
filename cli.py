@@ -95,16 +95,21 @@ def pybin_config():
         print(config)
 
 
+@runtime(RuntimeEnv.SHELL)
 def sourcerc():
     profiles = sdk.get_sh_profiles()
+    source_files = []
     for profile in profiles:
         if not os.path.exists(profile):
             continue
         else:
-            sdk.run_shell(f'source {profile}')
+            source_files.append(f"source {profile}")
 
     py_profile = sdk.get_home().joinpath(".pybin").joinpath("pybin_profile")
-    sdk.run_shell(f'source {py_profile}')
+    source_files.append(f"source {py_profile}")
+    cmd = "; ".join(source_files)
+    print(cmd)
+    sys.exit(250)
 
 
 def crc32_update():
