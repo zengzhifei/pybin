@@ -916,8 +916,7 @@ def file_deploy_server():
                     shutil.rmtree(file_home)
                 os.mkdir(file_home)
                 tar_cmd = f'tar -xzvf {filepath} -C {file_home}'
-                process = sdk.run_shell(tar_cmd)
-                print(process.stdout)
+                sdk.run_shell(tar_cmd)
                 os.remove(filepath)
 
             if args.cmd:
