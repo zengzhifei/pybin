@@ -833,7 +833,7 @@ def java_deploy_server():
             with open(filepath, 'wb') as f:
                 f.write(uploaded_file.file.read())
 
-            cmd = f"javaserver --restart --debug -d {filepath}"
+            cmd = f"javaserver --restart --debug --log -d {filepath}"
             if parse.query:
                 params = parse.query.split("&")
                 for param in params:
