@@ -5,7 +5,6 @@ import cgi
 import glob
 import inspect
 import json
-import logging
 import os
 import random
 import re
