@@ -10,6 +10,7 @@ import random
 import re
 import shutil
 import stat
+import subprocess
 import sys
 import tempfile
 import textwrap
@@ -749,65 +750,6 @@ def kill_process():
     sdk.iterate_process(condition=lambda proc_name: name in proc_name, callback=callback)
 
 
-def flink_deploy_server():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--port", type=int, default=8505)
-    parser.add_argument("-d", "--daemon", action="store_true")
-    parser.add_argument("--workspace", type=str, required=True)
-    args = parser.parse_args()
-
-    def post_method(handler: BaseHTTPRequestHandler):
-        parse = urlparse(handler.path)
-        if parse.path == '/deploy':
-            form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
-                                    environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': handler.headers['Content-Type']})
-            uploaded_file = form['file']
-            filename = os.path.basename(uploaded_file.filename)
-            filename_without_ext = Path(filename).with_suffix('').stem
-            file_dir = os.path.join(args.workspace, filename_without_ext)
-            if not os.path.exists(file_dir):
-                os.mkdir(file_dir)
-            filepath = os.path.join(file_dir, filename)
-            with open(filepath, 'wb') as f:
-                f.write(uploaded_file.file.read())
-
-            tar_cmd = f'tar -xzvf {filepath} -C {file_dir}'
-            process = sdk.run_shell(tar_cmd)
-            os.remove(filepath)
-            handler.ok(process.stdout)
-        else:
-            handler.error("the route is invalid")
-
-    if not os.path.exists(args.workspace):
-        raise RuntimeError(f"{args.workspace} is not exists")
-
-    http_server = sdk.HttpServer(port=args.port, name=f"FlinkDeployServer:{args.port}")
-    http_server.set_post_method(method=post_method)
-    http_server.start(daemon=args.daemon)
-
-
-def flink_deploy():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--url", type=str, required=True)
-    args = parser.parse_args()
-
-    project = os.path.basename(os.getcwd())
-    package = f'{project}.tar.gz'
-    tar_command = f'find . -mindepth 1 -maxdepth 1 ! -name ".idea" ! -name "output" ! -name "target" ! -name "{package}" -print0 | tar --null -zcvf "{package}" --files-from -'
-    result = sdk.run_shell(tar_command)
-
-    if result.returncode == 0:
-        print(f"packets has been successfully packed.")
-    else:
-        raise RuntimeError("packets has failed.")
-
-    print(f"ready to deploy package: {package}...", end="\n\n")
-
-    response = sdk.upload_file_with_curl(args.url, package)
-
-    print(f"\n\n{response}")
-
-
 def java_deploy_server():
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", type=int, default=8501)
@@ -1170,19 +1112,32 @@ def opssh():
 
 def get_pass():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--passId", type=str, default='')
-    parser.add_argument("--userName", type=str, default='')
-    parser.add_argument("--mobile", type=str, default='')
+    parser.add_argument("--passId", required=False, action="store_true")
+    parser.add_argument("--mobile", required=False, action="store_true")
+    parser.add_argument("input", type=str)
     args = parser.parse_args()
 
-    if not args.passId and not args.mobile and not args.userName:
-        parser.exit(1, parser.format_help())
+    passId = ''
+    username = ''
+    mobile = ''
+    if args.passId or args.mobile:
+        if args.passId:
+            passId = args.input
+        elif args.mobile:
+            mobile = args.input
+    else:
+        if re.match(r'^1[3-9]\d{9}$', args.input):
+            mobile = args.input
+        elif re.match(r'^\d+$', args.input):
+            passId = args.input
+        else:
+            username = args.input
 
     bns = sdk.get_config("bns")
     url: str = sdk.get_config("url")
     services = sdk.parse_bns(bns)
     host = f"{services[0]['ip']}:{services[0]['port']}"
-    url = url.format(host, args.passId, args.userName, args.mobile)
+    url = url.format(host, passId, username, mobile)
     headers = {
         'AMIS_ROLES': sdk.get_config("roles").encode('utf-8').decode('latin-1'),
         'AMIS_USER_TYPE': sdk.get_config("user_type"),
@@ -1249,6 +1204,19 @@ def hadooproxy():
 
     process = sdk.run_shell(cmd)
     print(process.stdout)
+
+
+def pip_search():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("package", type=str)
+    args = parser.parse_args()
+
+    cmds = [sys.executable, "-m", "pip", "install", f"{args.package}=="]
+    process = subprocess.run(cmds, stderr=subprocess.STDOUT, stdout=subprocess.PIPE, universal_newlines=True)
+    match = re.search(r"from versions: ([^)]+)", process.stdout)
+    print(f"Available versions:")
+    if match:
+        print(match.group(1))
 
 
 def manifest():
