@@ -814,12 +814,10 @@ def java_deploy_server():
     parser.add_argument("-p", "--port", type=int, default=8501)
     parser.add_argument("-d", "--daemon", action="store_true")
     parser.add_argument("-r", "--runtime", type=str, required=True)
-    parser.add_argument("-l", "--log", type=str)
     args = parser.parse_args()
 
     def post_method(handler: BaseHTTPRequestHandler):
         parse = urlparse(handler.path)
-        log(f"{parse}")
         if parse.path == '/deploy':
             form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
                                     environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': handler.headers['Content-Type']})
@@ -846,12 +844,6 @@ def java_deploy_server():
 
     if not os.path.exists(args.runtime):
         raise RuntimeError(f"{args.runtime} is not exists")
-
-    logger = None if args.log is None else sdk.get_logging(filename=args.log, level=logging.INFO)
-
-    def log(message: str):
-        if logger is not None:
-            logger.info(str)
 
     http_server = sdk.HttpServer(port=args.port, name=f"JavaDeployServer:{args.port}")
     http_server.set_post_method(method=post_method)
