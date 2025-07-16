@@ -29,26 +29,6 @@ from __about__ import __version__, __author__
 from ann import RuntimeEnv, RuntimeKey, RuntimeMode, runtime
 
 
-@runtime(RuntimeEnv.NONE)
-def funcs() -> dict:
-    funcs_map = {}
-
-    for name, item in globals().items():
-        if not (inspect.isfunction(item) and item.__module__ == __name__):
-            continue
-
-        env = getattr(item, RuntimeKey.ENV.value, RuntimeEnv.PYTHON.value)
-        if env == RuntimeEnv.NONE.value:
-            continue
-
-        functions = [] if env not in funcs_map else funcs_map[env]
-        functions.append(name)
-
-        funcs_map[env] = functions
-
-    return funcs_map
-
-
 def pybin_info():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--version", action="store_true")
@@ -56,7 +36,7 @@ def pybin_info():
     parser.add_argument("-f", "--function", action="store_true")
     args = parser.parse_args()
 
-    functions = "\n".join(sorted(["  " + func for functions in funcs().values() for func in functions]))
+    functions = "\n".join(sorted(["  " + func['name'] for functions in funcs().values() for func in functions]))
     if args.version:
         print(__version__)
         return
@@ -95,7 +75,7 @@ def pybin_config():
         print(config)
 
 
-@runtime(RuntimeEnv.SHELL)
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def sourcerc():
     profiles = sdk.get_sh_profiles()
     source_files = []
@@ -109,6 +89,184 @@ def sourcerc():
     source_files.append(f"source {py_profile}")
     cmd = "; ".join(source_files)
     print(cmd)
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def scd():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--list", type=int, help="less or equal 0 is list all")
+    parser.add_argument("-q", "--query", type=str)
+    parser.add_argument("-c", "--config", type=int, nargs=2)
+    parser.add_argument("-d", "--delete", type=int)
+    parser.add_argument("dir", type=str, nargs="?")
+    args = parser.parse_args()
+
+    data_file = sdk.get_home().joinpath(".scd")
+    if not os.path.exists(data_file):
+        file = open(data_file, 'w')
+        file.close()
+
+    if args.list is not None:
+        line_count = None if args.list <= 0 else args.list
+        print("".join(sdk.read_file(str(data_file), line_count=line_count, line_num=True)))
+        return
+
+    if args.query is not None:
+        contents = sdk.read_file(str(data_file), line_num=True)
+        for content in contents:
+            if args.query.lower() in content.lower():
+                print(content, end="")
+        return
+
+    if args.config is not None:
+        update_id = args.config[0] - 1
+        update_count = args.config[1]
+        contents = sdk.read_file(str(data_file))
+        cols = contents[update_id].split("|")
+        cols[1] = str(update_count)
+        contents[update_id] = "|".join(cols)
+        sdk.write_file(str(data_file), contents)
+        return
+
+    if args.delete is not None:
+        contents = sdk.read_file(str(data_file))
+        if len(contents) >= args.delete:
+            del contents[args.delete - 1]
+            sdk.write_file(str(data_file), contents)
+        return
+
+    target_dir = "." if args.dir is None else args.dir
+    target_dir = os.path.abspath(target_dir)
+    exists_dir = os.path.exists(target_dir)
+    dir_basename = os.path.basename(target_dir)
+
+    dir_item = {}
+    contents = sdk.read_file(str(data_file))
+    for content in contents:
+        cols = content.split("|")
+        item = {'dir_count': int(cols[1]), 'dir_time': int(cols[2])}
+        dir_item[cols[0]] = item
+
+    if not exists_dir:
+        filtered_data = {k: v for k, v in dir_item.items() if dir_basename.lower() in k.lower()}
+        if len(filtered_data) == 0:
+            return
+        target_dir, target_item = max(filtered_data.items(), key=lambda x: (x[1]['dir_count'], x[1]['dir_time']))
+
+    if target_dir in dir_item:
+        item = {'dir_count': dir_item[target_dir]['dir_count'] + 1, 'dir_time': int(time.time())}
+        dir_item[target_dir] = item
+    else:
+        item = {'dir_count': 1, 'dir_time': int(time.time())}
+        dir_item[target_dir] = item
+
+    new_dir_item = sorted(dir_item.items(), key=lambda it: (it[1]['dir_count'], it[1]['dir_time']), reverse=True)
+    new_contents = []
+    for new_dir, new_value in new_dir_item:
+        new_contents.append(f"{new_dir}|{new_value['dir_count']}|{new_value['dir_time']}\n")
+    sdk.write_file(str(data_file), new_contents)
+
+    print(f"cd {target_dir}")
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def gomysql():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("tag", type=str)
+    parser.add_argument("cmds", type=str, nargs="*")
+    args = parser.parse_args()
+
+    config = sdk.get_config(args.tag)
+
+    if args.cmds is None:
+        cmd = f'mysql -A {config} --default-character-set=utf8'
+    else:
+        cmd = f'mysql -A {config} --default-character-set=utf8 {" ".join(args.cmds)}'
+
+    print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def goredis():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("tag", type=str)
+    parser.add_argument("cmds", type=str, nargs="*")
+    args = parser.parse_args()
+
+    config = sdk.get_config(args.tag)
+
+    if "-h " in config:
+        conn = config
+    else:
+        service_info = sdk.parse_bns(config)
+        info = service_info[0]
+        ip = info['ip']
+        port = int(info['port'])
+        conn = f"-h {ip} -p {port}"
+
+    # can use --no-auth-warning in config
+    if args.cmds is None:
+        cmd = f'redis-cli {conn} --raw'
+    else:
+        cmd = f'redis-cli {conn} --raw {" ".join(args.cmds)}'
+
+    print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def gomachine():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("machine", type=str)
+    args = parser.parse_args()
+
+    config: dict = sdk.get_config(args.machine)
+    host = config.get('host')
+    passwd = config.get('passwd')
+    if passwd is not None and passwd:
+        cmd = f"sshpass -p {passwd} ssh {host}"
+    else:
+        cmd = f"ssh {host}"
+
+    print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def goinstance():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("instance", type=str)
+    args = parser.parse_args()
+
+    try:
+        instance = sdk.get_config(args.instance)
+    except KeyError:
+        instance = args.instance
+
+    cmd = f"ssh --matrix {instance}"
+    print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def stats_pb_convert():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--type", type=str, default="sp.worker.OLAPUpdateMessage")
+    parser.add_argument("--path", type=str, default="~/impl/worker-interface/baidu/fc-report/worker-interface/proto/")
+    parser.add_argument("pb", type=str)
+    args = parser.parse_args()
+
+    cmd = f"message_file_reader {args.pb} {args.type} {args.path}"
+    print(cmd)
+
     sys.exit(250)
 
 
@@ -266,85 +424,6 @@ def cleartrash():
 
         shutil.rmtree(file)
         print(f"{file} is removed.")
-
-
-@runtime(RuntimeEnv.SHELL)
-def scd():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--list", type=int, help="less or equal 0 is list all")
-    parser.add_argument("-q", "--query", type=str)
-    parser.add_argument("-c", "--config", type=int, nargs=2)
-    parser.add_argument("-d", "--delete", type=int)
-    parser.add_argument("dir", type=str, nargs="?")
-    args = parser.parse_args()
-
-    data_file = sdk.get_home().joinpath(".scd")
-    if not os.path.exists(data_file):
-        file = open(data_file, 'w')
-        file.close()
-
-    if args.list is not None:
-        line_count = None if args.list <= 0 else args.list
-        print("".join(sdk.read_file(str(data_file), line_count=line_count, line_num=True)))
-        return
-
-    if args.query is not None:
-        contents = sdk.read_file(str(data_file), line_num=True)
-        for content in contents:
-            if args.query.lower() in content.lower():
-                print(content, end="")
-        return
-
-    if args.config is not None:
-        update_id = args.config[0] - 1
-        update_count = args.config[1]
-        contents = sdk.read_file(str(data_file))
-        cols = contents[update_id].split("|")
-        cols[1] = str(update_count)
-        contents[update_id] = "|".join(cols)
-        sdk.write_file(str(data_file), contents)
-        return
-
-    if args.delete is not None:
-        contents = sdk.read_file(str(data_file))
-        if len(contents) >= args.delete:
-            del contents[args.delete - 1]
-            sdk.write_file(str(data_file), contents)
-        return
-
-    target_dir = "." if args.dir is None else args.dir
-    target_dir = os.path.abspath(target_dir)
-    exists_dir = os.path.exists(target_dir)
-    dir_basename = os.path.basename(target_dir)
-
-    dir_item = {}
-    contents = sdk.read_file(str(data_file))
-    for content in contents:
-        cols = content.split("|")
-        item = {'dir_count': int(cols[1]), 'dir_time': int(cols[2])}
-        dir_item[cols[0]] = item
-
-    if not exists_dir:
-        filtered_data = {k: v for k, v in dir_item.items() if dir_basename.lower() in k.lower()}
-        if len(filtered_data) == 0:
-            return
-        target_dir, target_item = max(filtered_data.items(), key=lambda x: (x[1]['dir_count'], x[1]['dir_time']))
-
-    if target_dir in dir_item:
-        item = {'dir_count': dir_item[target_dir]['dir_count'] + 1, 'dir_time': int(time.time())}
-        dir_item[target_dir] = item
-    else:
-        item = {'dir_count': 1, 'dir_time': int(time.time())}
-        dir_item[target_dir] = item
-
-    new_dir_item = sorted(dir_item.items(), key=lambda it: (it[1]['dir_count'], it[1]['dir_time']), reverse=True)
-    new_contents = []
-    for new_dir, new_value in new_dir_item:
-        new_contents.append(f"{new_dir}|{new_value['dir_count']}|{new_value['dir_time']}\n")
-    sdk.write_file(str(data_file), new_contents)
-
-    print(target_dir)
-    sys.exit(250)
 
 
 def runcmd():
@@ -966,90 +1045,6 @@ def php_deploy():
     print(f"\n\n{response}")
 
 
-@runtime(RuntimeEnv.SHELL)
-def gomysql():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("tag", type=str)
-    parser.add_argument("cmds", type=str, nargs="*")
-    args = parser.parse_args()
-
-    config = sdk.get_config(args.tag)
-
-    if args.cmds is None:
-        cmd = f'mysql -A {config} --default-character-set=utf8'
-    else:
-        cmd = f'mysql -A {config} --default-character-set=utf8 {" ".join(args.cmds)}'
-
-    print(cmd)
-
-    sys.exit(250)
-
-
-@runtime(RuntimeEnv.SHELL)
-def goredis():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("tag", type=str)
-    parser.add_argument("cmds", type=str, nargs="*")
-    args = parser.parse_args()
-
-    config = sdk.get_config(args.tag)
-
-    if "-h " in config:
-        conn = config
-    else:
-        service_info = sdk.parse_bns(config)
-        info = service_info[0]
-        ip = info['ip']
-        port = int(info['port'])
-        conn = f"-h {ip} -p {port}"
-
-    # can use --no-auth-warning in config
-    if args.cmds is None:
-        cmd = f'redis-cli {conn} --raw'
-    else:
-        cmd = f'redis-cli {conn} --raw {" ".join(args.cmds)}'
-
-    print(cmd)
-
-    sys.exit(250)
-
-
-@runtime(RuntimeEnv.SHELL)
-def gomachine():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("machine", type=str)
-    args = parser.parse_args()
-
-    config: dict = sdk.get_config(args.machine)
-    host = config.get('host')
-    passwd = config.get('passwd')
-    if passwd is not None and passwd:
-        cmd = f"sshpass -p {passwd} ssh {host}"
-    else:
-        cmd = f"ssh {host}"
-
-    print(cmd)
-
-    sys.exit(250)
-
-
-@runtime(RuntimeEnv.SHELL)
-def goinstance():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("instance", type=str)
-    args = parser.parse_args()
-
-    try:
-        instance = sdk.get_config(args.instance)
-    except KeyError:
-        instance = args.instance
-
-    cmd = f"ssh --matrix {instance}"
-    print(cmd)
-
-    sys.exit(250)
-
-
 def gko():
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
@@ -1564,20 +1559,6 @@ def stats_pb_compute():
         print(f"{this_key}\t{all_values}")
 
 
-@runtime(RuntimeEnv.SHELL)
-def stats_pb_convert():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--type", type=str, default="sp.worker.OLAPUpdateMessage")
-    parser.add_argument("--path", type=str, default="~/impl/worker-interface/baidu/fc-report/worker-interface/proto/")
-    parser.add_argument("pb", type=str)
-    args = parser.parse_args()
-
-    cmd = f"message_file_reader {args.pb} {args.type} {args.path}"
-    print(cmd)
-
-    sys.exit(250)
-
-
 def stats_run_bin():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--datasource", type=str, required=True)
@@ -1788,6 +1769,27 @@ def cvt_diff():
             split_diff = f"cat {file} | sed -n '{numbers[i]},{end}p' > {file_name}"
             sdk.run_shell(split_diff)
             print(file_name)
+
+
+@runtime(RuntimeEnv.NONE)
+def funcs() -> dict:
+    funcs_map = {}
+
+    for name, item in globals().items():
+        if not (inspect.isfunction(item) and item.__module__ == __name__):
+            continue
+
+        env = getattr(item, RuntimeKey.ENV.value, RuntimeEnv.PYTHON.value)
+        if env == RuntimeEnv.NONE.value:
+            continue
+
+        functions = [] if env not in funcs_map else funcs_map[env]
+        info = {"name": name, "item": item}
+        functions.append(info)
+
+        funcs_map[env] = functions
+
+    return funcs_map
 
 
 @runtime(RuntimeEnv.NONE)

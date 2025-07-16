@@ -5,10 +5,11 @@ import shutil
 import stat
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 import sdk
-from ann import RuntimeEnv
+from ann import RuntimeEnv, RuntimeKey
 from cli import funcs as functions
 
 
@@ -59,9 +60,10 @@ def install_bin(args):
     shutil.copy(current_path.joinpath("sdk.py"), root_path)
     shutil.copy(current_path.joinpath("ann.py"), root_path)
     shutil.copy(current_path.joinpath("cli.py"), root_path)
-    shutil.copy(current_path.joinpath("cli.sh"), root_path)
     shutil.copy(current_path.joinpath("__about__.py"), root_path)
     sdk.write_json_file(str(root_path.joinpath("config.json")), config)
+
+    generate_shell(str(root_path.joinpath("cli.sh")))
 
     mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
     mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
@@ -77,7 +79,7 @@ def install_bin(args):
     for env, funcs in funcs_map.items():
         if env == RuntimeEnv.PYTHON.value:
             for func in funcs:
-                os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(func))
+                os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(func['name']))
 
     paths = os.getenv("PATH", "").split(":")
     config = sdk.get_sh_profiles()[0]
@@ -106,6 +108,34 @@ def install_bin(args):
     if str(root_path) not in paths:
         with open(config, 'a', encoding="utf-8") as file:
             file.write(f'\nsource {py_profile}\n')
+
+
+def generate_shell(filename: str) -> None:
+    funcs_map = functions()
+    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
+
+    shell_content = '''\
+    #!/usr/bin/env sh
+    '''
+
+    template = '''
+    {func_name}() {{
+        result=$(cli.py "{func_name}" "$@")
+
+        if [ $? -eq {exit_code} ]; then
+            eval "$result"
+        elif [ -n "$result" ]; then
+            # shellcheck disable=SC2039
+            echo -e "$result"
+        fi
+    }}
+    '''
+
+    for info in shell_funcs:
+        shell_exit_code = getattr(info['item'], RuntimeKey.EXIT_CODE.value, 0)
+        shell_content += template.format(func_name=info['name'], exit_code=shell_exit_code)
+
+    sdk.write_file_content(filename, textwrap.dedent(shell_content))
 
 
 def install():
