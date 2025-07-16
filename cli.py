@@ -1003,10 +1003,11 @@ def goredis():
         port = int(info['port'])
         conn = f"-h {ip} -p {port}"
 
+    # can use --no-auth-warning in config
     if args.cmds is None:
-        cmd = f'redis-cli {conn} --no-auth-warning --raw'
+        cmd = f'redis-cli {conn} --raw'
     else:
-        cmd = f'redis-cli {conn} --no-auth-warning --raw {" ".join(args.cmds)}'
+        cmd = f'redis-cli {conn} --raw {" ".join(args.cmds)}'
 
     print(cmd)
 
