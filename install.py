@@ -23,6 +23,34 @@ def get_alias_config():
     }
 
 
+def generate_shell(filename: str) -> None:
+    funcs_map = functions()
+    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
+
+    shell_content = '''\
+    #!/usr/bin/env sh
+    '''
+
+    template = '''
+    {func_name}() {{
+        result=$(cli.py "{func_name}" "$@")
+
+        if [ $? -eq {exit_code} ]; then
+            eval "$result"
+        elif [ -n "$result" ]; then
+            # shellcheck disable=SC2039
+            echo -e "$result"
+        fi
+    }}
+    '''
+
+    for info in shell_funcs:
+        shell_exit_code = getattr(info['item'], RuntimeKey.EXIT_CODE.value, 0)
+        shell_content += template.format(func_name=info['name'], exit_code=shell_exit_code)
+
+    sdk.write_file_content(filename, textwrap.dedent(shell_content))
+
+
 def pre_version_check():
     min_version = (3, 6, 0)
     if sys.version_info < min_version:
@@ -81,9 +109,6 @@ def install_bin(args):
             for func in funcs:
                 os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(func['name']))
 
-    paths = os.getenv("PATH", "").split(":")
-    config = sdk.get_sh_profiles()[0]
-
     py_profile = root_path.joinpath("pybin_profile")
     py_config = [
         f'source {root_path.joinpath("cli.sh")}',
@@ -105,36 +130,9 @@ def install_bin(args):
 
     sdk.write_file(str(py_profile), py_config)
 
-    if str(root_path) not in paths:
+    config = sdk.get_sh_profiles()[0]
+    if f"{py_profile}" not in open(config).read():
         sdk.write_file_content_by_append(config, f'\n[[ -s "{py_profile}" ]] && source "{py_profile}"\n')
-
-
-def generate_shell(filename: str) -> None:
-    funcs_map = functions()
-    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
-
-    shell_content = '''\
-    #!/usr/bin/env sh
-    '''
-
-    template = '''
-    {func_name}() {{
-        result=$(cli.py "{func_name}" "$@")
-
-        if [ $? -eq {exit_code} ]; then
-            eval "$result"
-        elif [ -n "$result" ]; then
-            # shellcheck disable=SC2039
-            echo -e "$result"
-        fi
-    }}
-    '''
-
-    for info in shell_funcs:
-        shell_exit_code = getattr(info['item'], RuntimeKey.EXIT_CODE.value, 0)
-        shell_content += template.format(func_name=info['name'], exit_code=shell_exit_code)
-
-    sdk.write_file_content(filename, textwrap.dedent(shell_content))
 
 
 def install():
