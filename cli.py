@@ -15,7 +15,6 @@ import sys
 import tempfile
 import textwrap
 import time
-import zlib
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
@@ -268,17 +267,6 @@ def stats_pb_convert():
     print(cmd)
 
     sys.exit(250)
-
-
-def crc32_update():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('key', type=str)
-    args = parser.parse_args()
-
-    key = args.key
-    crc_value = zlib.crc32(key.encode())
-    crc_value &= 0xffffffff
-    print(crc_value)
 
 
 def dusort():
@@ -1769,6 +1757,35 @@ def cvt_diff():
             split_diff = f"cat {file} | sed -n '{numbers[i]},{end}p' > {file_name}"
             sdk.run_shell(split_diff)
             print(file_name)
+
+
+def agent_helper():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--db', type=str, required=True)
+    parser.add_argument('input', type=str)
+    args = parser.parse_args()
+
+    db = args.db
+    pre_cmd: str = sdk.get_config("pre_cmd")
+    sqls: dict[str, str] = sdk.get_config("sqls")
+
+    app_info_cmd = sqls['app_info'].format(db, args.input)
+    print(app_info_cmd)
+    process = sdk.run_shell(pre_cmd + app_info_cmd)
+    print(process.stdout)
+    user_info_id_match = re.search(r"user_info_id:\s*(\d+)", process.stdout)
+    user_info_id = user_info_id_match.group(1) if user_info_id_match else None
+
+    app_package_cmd = sqls['app_package'].format(db, sdk.crc32(args.input) % 16, args.input)
+    print(app_package_cmd)
+    process = sdk.run_shell(pre_cmd + app_package_cmd)
+    print(process.stdout)
+
+    if user_info_id:
+        business_detail_cmd = sqls['business_detail'].format(db, (int(user_info_id)) % 16, args.input)
+        print(business_detail_cmd)
+        process = sdk.run_shell(pre_cmd + business_detail_cmd)
+        print(process.stdout)
 
 
 @runtime(RuntimeEnv.NONE)

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import threading
 import traceback
+import zlib
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from subprocess import Popen
@@ -424,6 +425,12 @@ def aes_decrypt(data: bytes, key: str) -> bytes:
                     backend=default_backend())
     decryptor = cipher.decryptor()
     return decryptor.update(ciphertext) + decryptor.finalize()
+
+
+def crc32(key: str) -> int:
+    crc_value = zlib.crc32(key.encode())
+    crc_value &= 0xffffffff
+    return crc_value
 
 
 class HttpServer:
