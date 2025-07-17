@@ -106,8 +106,7 @@ def install_bin(args):
     sdk.write_file(str(py_profile), py_config)
 
     if str(root_path) not in paths:
-        with open(config, 'a', encoding="utf-8") as file:
-            file.write(f'\nsource {py_profile}\n')
+        sdk.write_file_content_by_append(config, f'\n[[ -s "{py_profile}" ]] && source "{py_profile}"\n')
 
 
 def generate_shell(filename: str) -> None:
