@@ -10,6 +10,8 @@ linux和mac上一些常用工具命令。
 ### 安装步骤
 1. **Clone源码**
 ```sh
+git clone git@github.com:zengzhifei/pybin.git
+or
 git clone https://github.com/zengzhifei/pybin.git
 cd pybin
 ```
