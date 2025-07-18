@@ -623,6 +623,22 @@ def securehooker():
     os.chmod(post_merge_file, mode=mode)
 
 
+def ikill():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("name", type=str)
+    args = parser.parse_args()
+
+    name = args.name.lower()
+
+    def callback(process_name: str, proc: psutil.Process):
+        confirm = input(f"confirm kill this process([{proc.pid}]{process_name})? [Y/N]\n")
+        if confirm.upper() == "Y":
+            proc.kill()
+            proc.wait(timeout=1)
+
+    sdk.iterate_process(condition=lambda proc_name: name in proc_name, callback=callback)
+
+
 def javaserver():
     parser = argparse.ArgumentParser()
     parser.add_argument("--restart", action="store_true", help="restart server")
@@ -733,22 +749,6 @@ def javaserver():
                                                                and (app.lower() in process_name),
                                 callback=lambda process_name, proc: print(process_name))
         return
-
-
-def ikill():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("name", type=str)
-    args = parser.parse_args()
-
-    name = args.name.lower()
-
-    def callback(process_name: str, proc: psutil.Process):
-        confirm = input(f"confirm kill this process([{proc.pid}]{process_name})? [Y/N]\n")
-        if confirm.upper() == "Y":
-            proc.kill()
-            proc.wait(timeout=1)
-
-    sdk.iterate_process(condition=lambda proc_name: name in proc_name, callback=callback)
 
 
 def java_deploy_server():
