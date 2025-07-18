@@ -6,7 +6,6 @@ import glob
 import inspect
 import json
 import os
-import random
 import re
 import shutil
 import stat
@@ -28,20 +27,42 @@ from __about__ import __version__, __author__
 from ann import RuntimeEnv, RuntimeKey, RuntimeMode, runtime
 
 
-def pybin_info():
+def pybin():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--version", action="store_true")
-    parser.add_argument("-a", "--author", action="store_true")
-    parser.add_argument("-f", "--function", action="store_true")
+    parser.add_argument("-v", "--version", action="store_true", help="show version")
+    parser.add_argument("-a", "--author", action="store_true", help="show author")
+    parser.add_argument("-f", "--function", action="store_true", help="show function")
+    parser.add_argument("-i", "--install", "--update", action="store_true", help="install or update pybin")
+    parser.add_argument("-c", "--config", type=str, nargs="+", help="show config")
     args = parser.parse_args()
 
-    functions = "\n".join(sorted(["  " + func['name'] for functions in funcs().values() for func in functions]))
+    if args.install:
+        source_path = os.environ.get("PYBIN_SOURCE_PATH")
+        os.chdir(source_path)
+        process = sdk.run_shell(f"{sys.executable} install.py")
+        print(process.stdout)
+        return
+
+    if args.config:
+        config_keys = args.config
+        config: dict = sdk.get_config(config_keys[0], is_caller=False)
+        for key in config_keys[1:]:
+            config = config.get(key)
+        if isinstance(config, dict):
+            print(sdk.format_json(config))
+        else:
+            print(config)
+        return
+
     if args.version:
         print(__version__)
         return
+
     if args.author:
         print(__author__)
         return
+
+    functions = "\n".join(sorted(["  " + func['name'] for functions in funcs().values() for func in functions]))
     if args.function:
         print(functions)
         return
@@ -49,29 +70,6 @@ def pybin_info():
     print(f"version: {__version__}")
     print(f"author: {__author__}")
     print(f"function: \n{functions}")
-
-
-def pybin_install():
-    source_path = os.environ.get("PYBIN_SOURCE_PATH")
-    os.chdir(source_path)
-    process = sdk.run_shell(f"{sys.executable} install.py")
-    print(process.stdout)
-
-
-def pybin_config():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("cmd_name", type=str)
-    parser.add_argument("keys", type=str, nargs="*")
-    args = parser.parse_args()
-
-    config: dict = sdk.get_config(args.cmd_name, is_caller=False)
-    if args.keys is not None:
-        for key in args.keys:
-            config = config.get(key)
-    if isinstance(config, dict):
-        print(sdk.format_json(config))
-    else:
-        print(config)
 
 
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
@@ -255,20 +253,6 @@ def goinstance():
     sys.exit(250)
 
 
-@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
-def stats_pb_convert():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--type", type=str, default="sp.worker.OLAPUpdateMessage")
-    parser.add_argument("--path", type=str, default="~/impl/worker-interface/baidu/fc-report/worker-interface/proto/")
-    parser.add_argument("pb", type=str)
-    args = parser.parse_args()
-
-    cmd = f"message_file_reader {args.pb} {args.type} {args.path}"
-    print(cmd)
-
-    sys.exit(250)
-
-
 def dusort():
     parser = argparse.ArgumentParser()
     parser.add_argument('--depth', type=int, default=1)
@@ -444,60 +428,10 @@ def runcmd():
     print(result.stdout)
 
 
-def htrim():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("text", type=str, nargs="?")
-    args = parser.parse_args()
-
-    if args.text is not None:
-        text = args.text.replace('\\n', '\n')
-    else:
-        text = sys.stdin.read()
-
-    print(sdk.trim(text, 1))
-
-
-def ttrim():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("text", type=str, nargs="?")
-    args = parser.parse_args()
-
-    if args.text is not None:
-        text = args.text.replace('\\n', '\n')
-    else:
-        text = sys.stdin.read()
-
-    print(sdk.trim(text, 2))
-
-
-def ltrim():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("text", type=str, nargs="?")
-    args = parser.parse_args()
-
-    if args.text is not None:
-        text = args.text.replace('\\n', '\n')
-    else:
-        text = sys.stdin.read()
-
-    print(sdk.trim(text, 3))
-
-
-def rtrim():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("text", type=str, nargs="?")
-    args = parser.parse_args()
-
-    if args.text is not None:
-        text = args.text.replace('\\n', '\n')
-    else:
-        text = sys.stdin.read()
-
-    print(sdk.trim(text, 4))
-
-
 def trim():
     parser = argparse.ArgumentParser()
+    parser.add_argument("-t", type=int, choices=[0, 1, 2, 3, 4], required=False, default=0,
+                        help="0 for all, 1 for head, 2 for button, 3 for left, 4 for right")
     parser.add_argument("text", type=str, nargs="?")
     args = parser.parse_args()
 
@@ -506,7 +440,7 @@ def trim():
     else:
         text = sys.stdin.read()
 
-    print(sdk.trim(text))
+    print(sdk.trim(text, args.t))
 
 
 def toupper():
@@ -535,7 +469,7 @@ def tolower():
     print(text.lower())
 
 
-def count_keyword_lines():
+def lgrep():
     parser = argparse.ArgumentParser()
     parser.add_argument("--keyword", type=str, required=True)
     parser.add_argument("file", type=str)
@@ -598,7 +532,7 @@ def csum():
     print(total_sum)
 
 
-def replace():
+def repeatfill():
     parser = argparse.ArgumentParser()
     parser.add_argument("--placeholder", type=str, default="{}")
     parser.add_argument("--start", type=int, default=0)
@@ -801,7 +735,7 @@ def javaserver():
         return
 
 
-def kill_process():
+def ikill():
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str)
     args = parser.parse_args()
@@ -1094,7 +1028,7 @@ def opssh():
     sdk.concurrent_execute(tasks=tasks, handler=handle, concurrent=args.concurrent)
 
 
-def get_pass():
+def pass_helper():
     parser = argparse.ArgumentParser()
     parser.add_argument("--passId", required=False, action="store_true")
     parser.add_argument("--mobile", required=False, action="store_true")
@@ -1132,7 +1066,7 @@ def get_pass():
     print(sdk.format_json(response.json()))
 
 
-def get_bns():
+def bns_helper():
     parser = argparse.ArgumentParser()
     parser.add_argument("service_name", type=str)
     args = parser.parse_args()
@@ -1323,37 +1257,6 @@ def table2markdown():
     print(table)
 
 
-def get_stream_wave():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("stream_name", type=str)
-    parser.add_argument("--key", type=str, nargs="+")
-    parser.add_argument("--len", action="store_true")
-    parser.add_argument("--index", type=int)
-    args = parser.parse_args()
-
-    services = sdk.parse_bns("group.report-RtsMetaIngestor.report.all")
-    service = random.choice(services)
-    ip = service['ip']
-    port = int(service['port'])
-    url = f"http://{ip}:{port}/instance_info_get?data_flow_name={args.stream_name}"
-    metadata_response = requests.get(url)
-    host = metadata_response.json().get("global_state").get("ip_port")
-    response = requests.get(f"http://{host}/query")
-    result = response.json()
-    if args.len:
-        print(len(result.get("data")))
-    elif args.index is not None:
-        key = list(result.get("data").keys())[args.index]
-        print(sdk.format_json({key: result.get("data").get(key)}))
-    elif args.key:
-        data = {}
-        for key in args.key:
-            data[key] = result.get("data").get(key)
-        print(sdk.format_json(data))
-    else:
-        print(sdk.format_json(result))
-
-
 def stats_service_process():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str)
@@ -1485,66 +1388,6 @@ def stats_service_process():
             print(process.stdout)
 
     do_process()
-
-
-def stats_service_check():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("stats_service_file", type=str)
-    args = parser.parse_args()
-
-    cmd1 = f"stats_service_process {args.stats_service_file} | jq . | grep '\"name\"' | ltrim | rtrim | sort | uniq -cd"
-    process1 = sdk.run_shell(cmd1)
-    print(f"checked the same name:\n{process1.stdout}")
-
-    cmd2 = f"stats_service_process {args.stats_service_file} | jq .child[].conf | jq -r . | jq .product | ltrim | " \
-           f"rtrim | sort | uniq -cd "
-    process2 = sdk.run_shell(cmd2)
-    print(f"checked the same product:\n{process2.stdout}")
-
-
-def stats_pb_compute():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--family", type=str)
-    parser.add_argument("--keys", type=str, nargs="+")
-    parser.add_argument("--values", type=str, nargs="+")
-    parser.add_argument("pb", type=str)
-    args = parser.parse_args()
-
-    contents = sdk.read_file(args.pb)
-
-    computed_keys_values: dict = {}
-    compute_family = args.family
-    compute_keys = args.keys
-    compute_value_keys = args.values
-
-    if (not compute_family) or (not compute_keys) or (not compute_value_keys):
-        cmd = f"cat {args.pb} | awk '{{print $2}}' | sort | uniq -c"
-        process = sdk.run_shell(cmd)
-        print(process.stdout)
-        return
-
-    for text in contents:
-        family = text.split('type: ')[1].split(' ')[0].strip('"')
-        if family != compute_family:
-            continue
-        fields = text.split('{', 1)[1].rsplit('}', 1)[0].strip()
-        field_dict = {}
-        matches = re.findall(r'(\w+):\s*([^ ,\n{}]+|".*?")', fields)
-        for key, value in matches:
-            field_dict[key] = value
-        computed_key = "\t".join(str(field_dict.get(compute_key, "")) for compute_key in compute_keys)
-        computed_values = computed_keys_values.get(computed_key, {})
-        new_computed_values = {}
-        for compute_value_key in compute_value_keys:
-            new_computed_values[compute_value_key] = int(computed_values.get(compute_value_key, 0)) + int(
-                field_dict.get(
-                    compute_value_key, 0))
-        computed_keys_values[computed_key] = new_computed_values
-
-    for this_key in computed_keys_values:
-        this_values: dict = computed_keys_values.get(this_key)
-        all_values = "\t".join(f"{key}:{value}" for key, value in this_values.items())
-        print(f"{this_key}\t{all_values}")
 
 
 def stats_run_bin():
@@ -1700,63 +1543,6 @@ def bp_sub():
 
     if args.out_path and os.path.exists(args.out_path):
         Path(f"./data/{args.pipename}.sub").rename(f"{args.out_path}/{args.pipename}.sub")
-
-
-def get_doris_export_fail_afs():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--grep", type=str, required=True)
-    args = parser.parse_args()
-
-    cmd = f"hadooproxy yinglong_doris fs -- -ls /user/charge_cpm/huaibeibei/flink_data/ingester_data/error | grep -i '{args.grep}'"
-    process = sdk.run_shell(cmd)
-    if not process.stdout.strip():
-        return
-    lines = process.stdout.strip().split('\n')
-    paths = [line.split()[-1] for line in lines if line.split()]
-    print(f"get size: {len(paths)}")
-    i = 0
-    for i, path in enumerate(paths, start=1):
-        print(f"{++i}\t{path}")
-        getcmd = f"hadooproxy yinglong_doris fs -- -get {path} ."
-        sdk.run_shell(getcmd)
-
-
-def cvt_diff():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("files", type=str, nargs="+")
-    args = parser.parse_args()
-
-    for file in args.files:
-        search_end_cmd = f"wc -l {file} | awk '{{print $1}}'"
-        process = sdk.run_shell(search_end_cmd)
-        file_end_number = int(process.stdout)
-        if file_end_number == 0:
-            continue
-
-        search_line_cmd = f"cat {file} | grep -nE ':new_file|:old_file'"
-        try:
-            process = sdk.run_shell(search_line_cmd)
-            lines = process.stdout.splitlines()
-        except RuntimeError:
-            print("no match")
-            continue
-
-        numbers = []
-        file_ids = []
-        for line in lines:
-            pairs = line.split(":", 1)
-            numbers.append(pairs[0])
-            file_ids.append(pairs[1])
-
-        for i, file_id in enumerate(file_ids):
-            file_name = file_id.split()[0]
-            if (i + 1) >= len(numbers):
-                end = file_end_number
-            else:
-                end = int(numbers[i + 1]) - 1
-            split_diff = f"cat {file} | sed -n '{numbers[i]},{end}p' > {file_name}"
-            sdk.run_shell(split_diff)
-            print(file_name)
 
 
 def agent_helper():

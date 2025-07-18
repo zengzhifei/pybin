@@ -124,7 +124,7 @@ def modify_file(filepath: str, old_text: str, new_text: str):
         file.write(content)
 
 
-def modify_file_by_patten(filepath: str, pattern: str, replace: Callable[[], str]):
+def modify_file_by_patten(filepath: str, pattern: str, replace: Callable[[str], str]):
     with open(filepath, 'r') as file:
         lines = file.readlines()
 
