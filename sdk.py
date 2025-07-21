@@ -515,9 +515,5 @@ class HttpServer:
                 self.end_headers()
                 self.wfile.write(response.encode("utf-8"))
 
-        def request_handler_factory(*args, **kwargs):
-            handler = RequestHandler(*args, **kwargs)
-            handler.http_server = self
-            return handler
-
-        return request_handler_factory
+        RequestHandler.http_server = self
+        return RequestHandler

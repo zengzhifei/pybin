@@ -786,7 +786,9 @@ def http_file_server():
             self.end_headers()
             return f
 
-    if args.dir:
+    if not os.path.exists(args.dir):
+        raise RuntimeError(f"{args.dir} is not exists")
+    else:
         os.chdir(args.dir)
 
     http_server = sdk.HttpServer(port=args.port, name=f"HttpFileServer:{args.port}")
