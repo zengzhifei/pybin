@@ -3,9 +3,12 @@
 import argparse
 import cgi
 import glob
+import html
 import inspect
+import io
 import json
 import os
+import platform
 import re
 import shutil
 import stat
@@ -14,11 +17,14 @@ import sys
 import tempfile
 import textwrap
 import time
+import urllib
 from datetime import datetime, timedelta
-from http.server import BaseHTTPRequestHandler
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
+import humanize
 import psutil as psutil
 import requests as requests
 
@@ -637,6 +643,156 @@ def ikill():
             proc.wait(timeout=1)
 
     sdk.iterate_process(condition=lambda proc_name: name in proc_name, callback=callback)
+
+
+def http_file_server():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dir', type=str, required=False, default=os.getcwd())
+    parser.add_argument('-p', '--port', type=int, required=False, default=8899)
+    parser.add_argument('-d', '--daemon', action='store_true')
+    args = parser.parse_args()
+
+    def modification_date(filename):
+        return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(filename)))
+
+    class HttpFileRequestHandler(SimpleHTTPRequestHandler):
+        def log_message(self, format, *args):
+            pass
+
+        def do_POST(self):
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            result, info = self.deal_post_data()
+            print(result, info, "by: ", self.client_address)
+            enc = sys.getfilesystemencoding()
+            r = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
+                 "<html>\n<title>Upload Result Page</title>\n", "<body>\n<h2>Upload Result Page</h2>\n", "<hr>\n"]
+            if result:
+                r.append("<strong>Success:</strong>")
+            else:
+                r.append("<strong>Failed:</strong>")
+            r.append(info)
+            r.append(f"<br><a href=\"{self.headers['referer']}\">back</a>")
+            r.append(f"<hr><small>last upload at: {now}</small></body>\n</html>\n")
+            encoded = '\n'.join(r).encode(enc)
+            f = io.BytesIO()
+            f.write(encoded)
+            f.seek(0)
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-type", f"text/html; charset={enc}")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            if f:
+                self.copyfile(f, self.wfile)
+                f.close()
+
+        def deal_post_data(self):
+            boundary = self.headers.get('content-type').split("=")[1].encode("utf-8")
+            remainders = int(self.headers['content-length'])
+            line = self.rfile.readline()
+            remainders -= len(line)
+            if boundary not in line:
+                return False, "Content not begin with boundary"
+            line = self.rfile.readline()
+            remainders -= len(line)
+            fn = re.findall(r'Content-Disposition.*name="file"; filename="(.*)"', line.decode("utf-8"))
+            if not fn:
+                return False, "Can't find out file name..."
+            path = self.translate_path(self.path)
+            osType = platform.system()
+            try:
+                if osType == "Linux":
+                    fn = os.path.join(path, fn[0])
+                else:
+                    fn = os.path.join(path, fn[0].decode("utf-8"))
+            except Exception as e:
+                return False, "Please do not use Chinese file name, or use IE to upload files with Chinese name."
+            if os.path.exists(fn):
+                os.remove(fn)
+            line = self.rfile.readline()
+            remainders -= len(line)
+            line = self.rfile.readline()
+            remainders -= len(line)
+            try:
+                out = open(fn, 'wb')
+            except IOError:
+                return False, "Can't create file to write, do you have permission to write?"
+            pre_line = self.rfile.readline()
+            remainders -= len(pre_line)
+            while remainders > 0:
+                line = self.rfile.readline()
+                remainders -= len(line)
+                if boundary in line:
+                    pre_line = pre_line[0:-1]
+                    if pre_line.endswith('\r'.encode("utf-8")):
+                        pre_line = pre_line[0:-1]
+                    out.write(pre_line)
+                    out.close()
+                    return True, f"File '{fn}' upload success!"
+                else:
+                    out.write(pre_line)
+                    pre_line = line
+            return False, "Unexpected end of data."
+
+        def list_directory(self, path):
+            try:
+                dir_list = os.listdir(path)
+            except OSError:
+                self.send_error(HTTPStatus.NOT_FOUND, "No permission to list directory")
+                return None
+            dir_list.sort(key=lambda a: a.lower())
+            r = []
+            try:
+                display_path = urllib.parse.unquote(self.path)
+            except UnicodeDecodeError:
+                display_path = urllib.parse.unquote(path)
+            display_path = html.escape(display_path, quote=False)
+            enc = sys.getfilesystemencoding()
+            title = f'Directory listing for {display_path}'
+            r.append('<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">')
+            r.append('<html>\n<head>')
+            r.append(f'<meta http-equiv="Content-Type" content="text/html; charset={enc}">')
+            r.append(f'<title>{title}</title>\n</head>')
+            r.append(f'<body>\n<h1>{title}</h1>')
+            r.append('<hr>\n')
+            r.append('<form ENCTYPE="multipart/form-data" method="post">')
+            r.append('<input name="file" type="file"/>')
+            r.append('<input type="submit" value="upload"/>')
+            r.append('&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp')
+            r.append('<input type="button" value="HomePage" onClick="location=\'/\'">')
+            r.append('</form>\n')
+            r.append('<hr>\n<ul>')
+            for name in dir_list:
+                fullname = os.path.join(path, name)
+                display_name = link_name = name
+                if os.path.isdir(fullname):
+                    display_name = name + "/"
+                    link_name = name + "/"
+                if os.path.islink(fullname):
+                    display_name = name + "@"
+                filename = os.getcwd() + '/' + display_path + display_name
+                r.append(f'<table><tr>'
+                         f'<td width="60%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
+                         f'<td width="20%%">{humanize.naturalsize(os.path.getsize(filename))}</td>'
+                         f'<td width="20%%">{modification_date(filename)}</td>'
+                         f'</tr></table>\n')
+            r.append("\n<hr>\n</body>\n</html>\n")
+            encoded = '\n'.join(r).encode(enc)
+            f = io.BytesIO()
+            f.write(encoded)
+            f.seek(0)
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-type", f"text/html; charset={enc}")
+            self.send_header("Content-Length", str(len(encoded)))
+            self.end_headers()
+            return f
+
+    if args.dir:
+        os.chdir(args.dir)
+
+    http_server = sdk.HttpServer(port=args.port, name=f"HttpFileServer:{args.port}")
+    http_server.set_request_handler_class(HttpFileRequestHandler)
+    http_server.use_threading_http_server(True)
+    http_server.start(daemon=args.daemon)
 
 
 def javaserver():

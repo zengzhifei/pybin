@@ -12,7 +12,7 @@ import sys
 import threading
 import traceback
 import zlib
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from subprocess import Popen
 from typing import Type, AnyStr, List, Any, Dict, Optional, Callable
@@ -437,6 +437,8 @@ class HttpServer:
     def __init__(self, port: int = 8000, name: str = None):
         self.port = port
         self.name = name.strip()
+        self.request_handler_class = None
+        self.useThreadingHTTPServer = False
         self.get_method = None
         self.post_method = None
 
@@ -446,11 +448,30 @@ class HttpServer:
     def set_post_method(self, method: Optional[Callable[[BaseHTTPRequestHandler], None]] = None):
         self.post_method = method
 
+    def set_request_handler_class(self,
+                                  request_handler_class: Callable[[Any, Any, HTTPServer], BaseHTTPRequestHandler]):
+        self.request_handler_class = request_handler_class
+
+    def use_threading_http_server(self, useThreadingHTTPServer: bool = True):
+        self.useThreadingHTTPServer = useThreadingHTTPServer
+
     def _run(self):
         if self.name is not None:
             setproctitle.setproctitle(self.name)
 
-        httpd = HTTPServer(server_address=('', self.port), RequestHandlerClass=self._make_request_handler_class())
+        if self.request_handler_class is not None:
+            RequestHandlerClass = self.request_handler_class
+        else:
+            RequestHandlerClass = self._make_request_handler_class()
+
+        if self.useThreadingHTTPServer:
+            httpd = ThreadingHTTPServer(server_address=('', self.port), RequestHandlerClass=RequestHandlerClass)
+        else:
+            httpd = HTTPServer(server_address=('', self.port), RequestHandlerClass=RequestHandlerClass)
+
+        host, port = httpd.socket.getsockname()[:2]
+        print(f"Serving HTTP on {host} port {port}.")
+
         httpd.serve_forever()
 
     def start(self, daemon: bool = False):
@@ -463,7 +484,7 @@ class HttpServer:
         else:
             self._run()
 
-    def _make_request_handler_class(self):
+    def _make_request_handler_class(self) -> Callable[[Any, Any, HTTPServer], BaseHTTPRequestHandler]:
         class RequestHandler(BaseHTTPRequestHandler):
             http_server: Optional[HttpServer]
 
@@ -494,5 +515,9 @@ class HttpServer:
                 self.end_headers()
                 self.wfile.write(response.encode("utf-8"))
 
-        RequestHandler.http_server = self
-        return RequestHandler
+        def request_handler_factory(*args, **kwargs):
+            handler = RequestHandler(*args, **kwargs)
+            handler.http_server = self
+            return handler
+
+        return request_handler_factory

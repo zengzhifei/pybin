@@ -8,10 +8,6 @@ import sys
 import textwrap
 from pathlib import Path
 
-import sdk
-from ann import RuntimeEnv, RuntimeKey
-from cli import funcs as functions
-
 
 def get_alias_config():
     return {
@@ -24,6 +20,10 @@ def get_alias_config():
 
 
 def generate_shell(filename: str) -> None:
+    import sdk
+    from cli import funcs as functions
+    from ann import RuntimeEnv, RuntimeKey
+
     funcs_map = functions()
     shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
 
@@ -69,6 +69,10 @@ def install_requirements(args):
 
 
 def install_bin(args):
+    import sdk
+    from cli import funcs as functions
+    from ann import RuntimeEnv
+
     root_path = sdk.get_home().joinpath(".pybin")
     current_path = Path.absolute(Path(__file__)).parent
 
