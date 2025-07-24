@@ -1732,6 +1732,75 @@ def agent_helper():
         print(process.stdout)
 
 
+def rcc_helper():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--old_env', type=str, required=True)
+    parser.add_argument('--new_env', type=str, required=True)
+    parser.add_argument('project', type=str)
+    args = parser.parse_args()
+
+    def rcc(token, environment, environment_url, version_url, group_url, item_url):
+        environment_url = environment_url.format(token=token, environment=environment)
+        response = requests.get(environment_url).json()
+        if response['status'] != 0:
+            raise RuntimeError(f"{environment}: get environment failed: {response['msg']}")
+        environmentId = response['data']['environmentId']
+
+        version_url = version_url.format(token=token, environmentId=environmentId)
+        response = requests.get(version_url).json()
+        if response['status'] != 0:
+            raise RuntimeError(f"{environment}: get version failed: {response['msg']}")
+        versionId = response['data']['versionId']
+
+        group_url = group_url.format(token=token, versionId=versionId)
+        response = requests.get(group_url).json()
+        if response['status'] != 0:
+            raise RuntimeError(f"get group {versionId} failed: {response['msg']}")
+        groups = response['data']
+        group_map = {}
+        for group in groups:
+            group_map[group['groupId']] = group['groupName']
+
+        item_url = item_url.format(token=token)
+        item_body = {"versionId": versionId}
+        response = requests.post(item_url, json=item_body).json()
+        if response['status'] != 0:
+            raise RuntimeError(f"{environment}: get config item failed: {response['msg']}")
+        item_map = {}
+        for item in response['data']:
+            item_map[item['key']] = item
+
+        return group_map, item_map
+
+    project_config: dict = sdk.get_config(args.project)
+    auth_url = sdk.get_config("auth_url")
+    auth_body = {"projectName": project_config['projectName'], "apiPassword": project_config['apiPassword']}
+    result = requests.post(auth_url, json=auth_body).json()
+    if result['status'] != 0:
+        raise RuntimeError(f"get auth failed: {result['msg']}")
+    tk = result['data']['token']
+    new_group_map, news_map = rcc(tk, args.new_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
+                                  sdk.get_config('group_url'), sdk.get_config('item_url'))
+    old_group_map, olds_map = rcc(tk, args.old_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
+                                  sdk.get_config('group_url'), sdk.get_config('item_url'))
+    diff_keys = set(news_map.keys()) - set(olds_map.keys())
+
+    group_kv_map = {}
+    for diff_key in diff_keys:
+        item = news_map[diff_key]
+        groupId = item['groupId']
+        groupName = new_group_map[groupId]
+        kvs = group_kv_map.get(groupName, {})
+        kvs[item['key']] = item['value']
+        group_kv_map[groupName] = kvs
+
+    for group_name, item in group_kv_map.items():
+        if group_name not in old_group_map.values():
+            group_kv_map[group_name] = "new group"
+
+    print(json.dumps(group_kv_map))
+
+
 @runtime(RuntimeEnv.NONE)
 def funcs() -> dict:
     funcs_map = {}
