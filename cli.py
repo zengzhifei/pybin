@@ -1734,8 +1734,8 @@ def agent_helper():
 
 def rcc_helper():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--old_env', type=str, required=True)
-    parser.add_argument('--new_env', type=str, required=True)
+    parser.add_argument('--from_env', type=str, required=True)
+    parser.add_argument('--to_env', type=str, required=True)
     parser.add_argument('project', type=str)
     args = parser.parse_args()
 
@@ -1779,9 +1779,9 @@ def rcc_helper():
     if result['status'] != 0:
         raise RuntimeError(f"get auth failed: {result['msg']}")
     tk = result['data']['token']
-    new_group_map, news_map = rcc(tk, args.new_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
+    new_group_map, news_map = rcc(tk, args.from_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
                                   sdk.get_config('group_url'), sdk.get_config('item_url'))
-    old_group_map, olds_map = rcc(tk, args.old_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
+    old_group_map, olds_map = rcc(tk, args.to_env, sdk.get_config('environment_url'), sdk.get_config('version_url'),
                                   sdk.get_config('group_url'), sdk.get_config('item_url'))
     diff_keys = set(news_map.keys()) - set(olds_map.keys())
 
