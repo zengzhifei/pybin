@@ -803,6 +803,7 @@ def javaserver():
     parser.add_argument("--stop", action="store_true", help="stop server")
     parser.add_argument("--status", action="store_true", help="show server status")
     parser.add_argument("--config", action="store_true", help="show server config")
+    parser.add_argument("--reload", action="store_true", help="reload server")
     parser.add_argument("--env", type=str, default="test", help="set server env")
     parser.add_argument("-p", "--port", type=int, help="set server port")
     parser.add_argument("-m", "--memory", type=int, help="set server memory")
@@ -864,6 +865,7 @@ def javaserver():
             else:
                 cmd = f"{cmd} >/dev/null 2>&1 &"
         sdk.run_shell(cmd)
+        sdk.write_file_content(".javaserver.runcmd", cmd)
         print(cmd)
         return
 
@@ -906,6 +908,24 @@ def javaserver():
             sdk.iterate_process(condition=lambda process_name: ('launcher=javaserver' in process_name)
                                                                and (app.lower() in process_name),
                                 callback=lambda process_name, proc: print(process_name))
+        return
+
+    if args.reload:
+        if not os.path.exists(app):
+            raise FileNotFoundError(f"{app} not found")
+        if not app.endswith(".jar"):
+            raise FileNotFoundError(f"{app} is not a jar package.")
+        dir_name = os.path.dirname(app)
+        jar = os.path.basename(app)
+        os.chdir(dir_name)
+
+        reload_cmd = sdk.read_file_content(".javaserver.runcmd")
+        sdk.iterate_process(condition=lambda process_name: ('launcher=javaserver' in process_name)
+                                                           and (jar.lower() in process_name),
+                            callback=lambda process_name, proc: proc.kill())
+
+        sdk.run_shell(reload_cmd)
+        print(reload_cmd)
         return
 
 
