@@ -893,7 +893,7 @@ def javaserver():
                                 callback=lambda process_name, proc: proc.kill())
         else:
             sdk.iterate_process(condition=lambda process_name: ('launcher=javaserver' in process_name)
-                                                               and (jar.lower() in process_name),
+                                                               and (app.lower() in process_name),
                                 callback=lambda process_name, proc: proc.kill())
         return
 
