@@ -538,6 +538,16 @@ def csum():
     print(total_sum)
 
 
+def mod():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('dividend', type=int)
+    args = parser.parse_args()
+
+    for line in sys.stdin:
+        divisor = int(line.strip())
+        print(divisor % args.dividend)
+
+
 def repeatfill():
     parser = argparse.ArgumentParser()
     parser.add_argument("--placeholder", type=str, default="{}")
@@ -627,6 +637,14 @@ def securehooker():
     post_merge_file = ".git/hooks/post-merge"
     sdk.write_file(post_merge_file, [inspect.cleandoc(post_merge)])
     os.chmod(post_merge_file, mode=mode)
+
+
+def crc32gen():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', type=str)
+    args = parser.parse_args()
+
+    print(sdk.crc32(args.input))
 
 
 def ikill():
