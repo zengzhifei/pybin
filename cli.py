@@ -10,6 +10,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import stat
 import subprocess
@@ -187,7 +188,7 @@ def gomysql():
     if args.cmds is None:
         cmd = f'mysql -A {config} --default-character-set=utf8'
     else:
-        cmd = f'mysql -A {config} --default-character-set=utf8 {" ".join(args.cmds)}'
+        cmd = f'mysql -A {config} --default-character-set=utf8 {" ".join(shlex.quote(cmd) for cmd in args.cmds)}'
 
     print(cmd)
 
@@ -216,7 +217,7 @@ def goredis():
     if args.cmds is None:
         cmd = f'redis-cli {conn} --raw'
     else:
-        cmd = f'redis-cli {conn} --raw {" ".join(args.cmds)}'
+        cmd = f'redis-cli {conn} --raw {" ".join(shlex.quote(cmd) for cmd in args.cmds)}'
 
     print(cmd)
 
