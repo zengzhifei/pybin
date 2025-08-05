@@ -1434,7 +1434,7 @@ def pandas():
         print("\t".join(map(str, value)))
 
 
-def table2markdown():
+def table2md():
     parser = argparse.ArgumentParser()
     parser.add_argument("table", type=str, nargs="?")
     args = parser.parse_args()
@@ -1753,6 +1753,7 @@ def agent_helper():
     sqls: dict[str, str] = sdk.get_config("sqls")
 
     app_info_cmd = sqls['app_info'].format(db, args.input)
+    print(sdk.beautify_separator_line(separator='='))
     print(app_info_cmd)
     process = sdk.run_shell(pre_cmd + app_info_cmd)
     print(process.stdout)
@@ -1760,15 +1761,19 @@ def agent_helper():
     user_info_id = user_info_id_match.group(1) if user_info_id_match else None
 
     app_package_cmd = sqls['app_package'].format(db, sdk.crc32(args.input) % 16, args.input)
+    print(sdk.beautify_separator_line(separator='='))
     print(app_package_cmd)
     process = sdk.run_shell(pre_cmd + app_package_cmd)
     print(process.stdout)
 
     if user_info_id:
         business_detail_cmd = sqls['business_detail'].format(db, (int(user_info_id)) % 16, args.input)
+        print(sdk.beautify_separator_line(separator='='))
         print(business_detail_cmd)
         process = sdk.run_shell(pre_cmd + business_detail_cmd)
         print(process.stdout)
+
+    print(sdk.beautify_separator_line(separator='='))
 
 
 def rcc_helper():

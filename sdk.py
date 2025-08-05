@@ -20,6 +20,7 @@ from typing import Type, AnyStr, List, Any, Dict, Optional, Callable
 import psutil
 import requests
 import setproctitle as setproctitle
+from colorama import Fore, Style
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from requests import Response
@@ -431,6 +432,12 @@ def crc32(key: str) -> int:
     crc_value = zlib.crc32(key.encode())
     crc_value &= 0xffffffff
     return crc_value
+
+
+def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, min_width: int = 40) -> str:
+    columns = os.get_terminal_size().columns
+    columns = max(columns, min_width)
+    return color + Style.NORMAL + separator * columns + Style.RESET_ALL
 
 
 class HttpServer:
