@@ -277,7 +277,8 @@ def parse_bns(bns: str) -> List[dict]:
         tags_map['group'] = cols[2]
         tags_map['port'] = cols[3]
         tags_map['instance'] = '.'.join(cols[8].split('.', 4)[:4])
-        tags_map['workspace'] = cols[9]
+        tags_map['namespace'] = cols[9]
+        tags_map['workspace'] = cols[10]
 
         results.append(tags_map)
 

@@ -260,6 +260,28 @@ def goinstance():
     sys.exit(250)
 
 
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def goeks():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('ens', type=str)
+    args = parser.parse_args()
+
+    try:
+        ens = sdk.get_config(args.ens)
+    except KeyError:
+        ens = args.ens
+
+    service_info = sdk.parse_bns(ens)
+    namespace: str = service_info[0]['namespace']
+
+    parts = namespace.split('.')
+    cmd = f"ekscli exec --clusterName {parts[-1]} -n {parts[0]} -p {'.'.join(parts[1:-2])} -c {parts[-2]} -- bash"
+
+    print(cmd)
+
+    sys.exit(250)
+
+
 def dusort():
     parser = argparse.ArgumentParser()
     parser.add_argument('--depth', type=int, default=1)
@@ -314,16 +336,16 @@ def gitcp():
 
 def gitrename():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--oldemail", required=True, type=str)
-    parser.add_argument("--newname", required=True, type=str)
-    parser.add_argument("--newemail", required=True, type=str)
+    parser.add_argument("--old_email", required=True, type=str)
+    parser.add_argument("--new_name", required=True, type=str)
+    parser.add_argument("--new_email", required=True, type=str)
     args = parser.parse_args()
 
     cmd = f"""
         git filter-branch -f --env-filter '
-            OLD_EMAIL="'{args.oldemail}'"
-            CORRECT_NAME="'{args.newname}'"
-            CORRECT_EMAIL="'{args.newemail}'"
+            OLD_EMAIL="'{args.old_email}'"
+            CORRECT_NAME="'{args.new_name}'"
+            CORRECT_EMAIL="'{args.new_email}'"
             if [ "$GIT_COMMITTER_EMAIL" = "$OLD_EMAIL" ]
             then
                 export GIT_COMMITTER_NAME="$CORRECT_NAME"
@@ -648,7 +670,7 @@ def crc32gen():
     print(sdk.crc32(args.input))
 
 
-def ikill():
+def killer():
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str)
     args = parser.parse_args()
