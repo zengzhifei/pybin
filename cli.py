@@ -177,6 +177,19 @@ def scd():
 
 
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def java_decompiler():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--cfr', type=str, required=True, help="download from https://www.benf.org/other/cfr/")
+    parser.add_argument('class_file', type=str)
+    args = parser.parse_args()
+
+    cmd = f"java -jar {args.cfr} {args.class_file}"
+    print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def gomysql():
     parser = argparse.ArgumentParser()
     parser.add_argument("tag", type=str)
