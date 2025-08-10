@@ -446,7 +446,7 @@ class HttpServer:
         self.port = port
         self.name = name.strip()
         self.request_handler_class = None
-        self.useThreadingHTTPServer = False
+        self.use_threading = False
         self.get_method = None
         self.post_method = None
 
@@ -460,22 +460,22 @@ class HttpServer:
                                   request_handler_class: Callable[[Any, Any, HTTPServer], BaseHTTPRequestHandler]):
         self.request_handler_class = request_handler_class
 
-    def use_threading_http_server(self, useThreadingHTTPServer: bool = True):
-        self.useThreadingHTTPServer = useThreadingHTTPServer
+    def use_threading_http_server(self, use_threading: bool = True):
+        self.use_threading = use_threading
 
     def _run(self):
         if self.name is not None:
             setproctitle.setproctitle(self.name)
 
         if self.request_handler_class is not None:
-            RequestHandlerClass = self.request_handler_class
+            request_handler_class = self.request_handler_class
         else:
-            RequestHandlerClass = self._make_request_handler_class()
+            request_handler_class = self._make_request_handler_class()
 
-        if self.useThreadingHTTPServer:
-            httpd = ThreadingHTTPServer(server_address=('', self.port), RequestHandlerClass=RequestHandlerClass)
+        if self.use_threading:
+            httpd = ThreadingHTTPServer(server_address=('', self.port), RequestHandlerClass=request_handler_class)
         else:
-            httpd = HTTPServer(server_address=('', self.port), RequestHandlerClass=RequestHandlerClass)
+            httpd = HTTPServer(server_address=('', self.port), RequestHandlerClass=request_handler_class)
 
         host, port = httpd.socket.getsockname()[:2]
         print(f"Serving HTTP on {host} port {port}.")
@@ -497,7 +497,7 @@ class HttpServer:
             http_server: Optional[HttpServer]
 
             def log_message(self, format, *args):
-                return
+                pass
 
             def do_GET(self):
                 if self.http_server.get_method is not None:

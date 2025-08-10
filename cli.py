@@ -715,8 +715,11 @@ def http_file_server():
 
         def do_POST(self):
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            result, info = self.deal_post_data()
-            print(result, info, "by: ", self.client_address)
+            try:
+                result, info = self.deal_post_data()
+            except Exception:
+                result, info = False, 'Unknown server error'
+            self.log_message('%s %s by: %s', result, info, self.client_address)
             enc = sys.getfilesystemencoding()
             r = ['<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">',
                  "<html>\n<title>Upload Result Page</title>\n", "<body>\n<h2>Upload Result Page</h2>\n", "<hr>\n"]
@@ -807,14 +810,15 @@ def http_file_server():
             r.append(f'<meta http-equiv="Content-Type" content="text/html; charset={enc}">')
             r.append(f'<title>{title}</title>\n</head>')
             r.append(f'<body>\n<h1>{title}</h1>')
-            r.append('<hr>\n')
+            r.append('<hr>')
             r.append('<form ENCTYPE="multipart/form-data" method="post">')
             r.append('<input name="file" type="file"/>')
             r.append('<input type="submit" value="upload"/>')
             r.append('&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp')
             r.append('<input type="button" value="HomePage" onClick="location=\'/\'">')
-            r.append('</form>\n')
-            r.append('<hr>\n<ul>')
+            r.append('</form>')
+            r.append('<hr>')
+            r.append('<table width="100%" cellspacing="0" cellpadding="5">')
             for name in dir_list:
                 fullname = os.path.join(path, name)
                 display_name = link_name = name
@@ -824,12 +828,15 @@ def http_file_server():
                 if os.path.islink(fullname):
                     display_name = name + "@"
                 filename = os.getcwd() + '/' + display_path + display_name
-                r.append(f'<table><tr>'
+                r.append(f'<tr>'
                          f'<td width="60%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
                          f'<td width="20%%">{humanize.naturalsize(os.path.getsize(filename))}</td>'
                          f'<td width="20%%">{modification_date(filename)}</td>'
-                         f'</tr></table>\n')
-            r.append("\n<hr>\n</body>\n</html>\n")
+                         f'</tr>')
+            r.append('</table>')
+            r.append('<hr>')
+            r.append("</body>")
+            r.append("</html>")
             encoded = '\n'.join(r).encode(enc)
             f = io.BytesIO()
             f.write(encoded)
