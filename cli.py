@@ -1015,9 +1015,15 @@ def java_deploy_server():
             cmd = f"javaserver --restart --debug --log -d {filepath}"
             if parse.query:
                 params = parse.query.split("&")
+                params_dict = {}
                 for param in params:
                     pair = param.split("=", 1)
-                    cmd = f"{cmd} {pair[0]} {pair[1]}"
+                    params_dict_value = params_dict.get(pair[0], [])
+                    params_dict_value.append(pair[1])
+                    params_dict[pair[0]] = params_dict_value
+                for key in params_dict:
+                    value = " ".join(params_dict[key])
+                    cmd = f"{cmd} {key} {value}"
             process = sdk.run_shell(cmd)
             handler.ok(process.stdout)
         else:
