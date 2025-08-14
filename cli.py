@@ -295,6 +295,51 @@ def goeks():
     sys.exit(250)
 
 
+def goes():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--raw', action='store_true')
+    parser.add_argument("tag", type=str)
+    parser.add_argument('sql', type=str, nargs="?")
+    args = parser.parse_args()
+
+    if args.sql is None:
+        sql = sdk.get_multiline_input('enter sql and press enter twice to end:')
+        print(sdk.beautify_separator_line())
+    else:
+        sql = args.sql
+
+    ip_host = sdk.get_config(args.tag)
+    if sdk.trim(sql).lower().rstrip(';') == "show tables":
+        url = f'http://{ip_host}/_cat/indices?v'
+        response = requests.get(url)
+    else:
+        converter = sdk.Sql2EsConverter(sql).convert()
+        index = converter.get_index()
+        dsl = converter.get_dsl()
+        url = f'http://{ip_host}/{index}/_search'
+        response = requests.post(url, json=json.loads(dsl))
+
+    if args.raw:
+        print(response.json())
+    else:
+        print(json.dumps(response.json(), indent=2))
+
+
+def sql2es():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('sql', type=str, nargs='?')
+    args = parser.parse_args()
+
+    if args.sql is None:
+        sql = sdk.get_multiline_input('enter sql and press enter twice to end:')
+        print(sdk.beautify_separator_line())
+    else:
+        sql = args.sql
+
+    converter = sdk.Sql2EsConverter(sql).convert()
+    print(converter.get_dsl())
+
+
 def dusort():
     parser = argparse.ArgumentParser()
     parser.add_argument('--depth', type=int, default=1)

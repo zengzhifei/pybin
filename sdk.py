@@ -23,6 +23,7 @@ import setproctitle as setproctitle
 from colorama import Fore, Style
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from moz_sql_parser import parse
 from requests import Response
 
 from ann import RuntimeKey, RuntimeMode
@@ -441,6 +442,26 @@ def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, min_wi
     return color + Style.NORMAL + separator * columns + Style.RESET_ALL
 
 
+def get_multiline_input(tip: str = '', end_input_number: int = 1) -> str:
+    if tip:
+        print(tip, '\n')
+
+    lines = []
+    enter_count = 0
+
+    while True:
+        line = input()
+        if line == "":
+            enter_count += 1
+            if enter_count == end_input_number:
+                break
+        else:
+            enter_count = 0
+            lines.append(line)
+
+    return '\n'.join(lines)
+
+
 class HttpServer:
     def __init__(self, port: int = 8000, name: str = None):
         self.port = port
@@ -525,3 +546,101 @@ class HttpServer:
 
         RequestHandler.http_server = self
         return RequestHandler
+
+
+class Sql2EsConverter:
+    def __init__(self, sql: str):
+        self.__index = None
+        self.__sql = sql
+        self.__parsed = parse(sql)
+        self.__dsl = {}
+
+    def get_dsl(self, indent: int = 2) -> str:
+        return json.dumps(self.__dsl, indent=indent)
+
+    def get_index(self) -> str:
+        return self.__index
+
+    def convert(self) -> 'Sql2EsConverter':
+        self.__dsl = {}
+
+        if 'select' in self.__parsed:
+            self.__dsl['_source'] = self.__parse_select(self.__parsed['select'])
+
+        if 'from' in self.__parsed:
+            self.__index = self.__parsed['from']
+
+        if 'where' in self.__parsed:
+            self.__dsl['query'] = self.__parse_where(self.__parsed['where'])
+
+        if 'orderby' in self.__parsed:
+            self.__dsl['sort'] = self.__parse_order_by(self.__parsed['orderby'])
+
+        if 'limit' in self.__parsed and self.__dsl['size'] is None:
+            self.__dsl['size'] = self.__parsed['limit']
+
+        return self
+
+    def __parse_select(self, select) -> list:
+        fields = []
+        if isinstance(select, list):
+            for item in select:
+                value = item.get('value')
+                if isinstance(value, str):
+                    fields.append(value)
+        elif isinstance(select, dict):
+            value = select.get('value')
+            if isinstance(value, str):
+                fields.append(value)
+            elif isinstance(value, dict):
+                if 'count' in value:
+                    self.__dsl['size'] = 0
+        return fields
+
+    def __parse_where(self, where) -> dict:
+        return self.__parse_where_logic(where)
+
+    def __parse_order_by(self, order) -> list:
+        if isinstance(order, dict):
+            return [{order['value']: {'order': order.get('sort', 'asc')}}]
+        else:
+            return [{o['value']: {'order': o.get('sort', 'asc')}} for o in order]
+
+    def __parse_where_logic(self, expr) -> dict:
+        if isinstance(expr, str):
+            # 支持 NOT is_admin => { "term": { "is_admin": true } }
+            return {'term': {expr: True}}
+
+        if isinstance(expr, dict):
+            if 'and' in expr:
+                return {'bool': {'must': [self.__parse_where_logic(e) for e in expr['and']]}}
+            elif 'or' in expr:
+                return {'bool': {'should': [self.__parse_where_logic(e) for e in expr['or']]}}
+            elif 'not' in expr:
+                return {'bool': {'must_not': [self.__parse_where_logic(expr['not'])]}}
+
+            # 通用比较操作符
+            ops = {
+                ('=', '==', 'eq', '!=', '<>', 'neq'): lambda f, v: {'term': {f: v}},
+                ('>', 'gt'): lambda f, v: {'range': {f: {'gt': v}}},
+                ('<', 'lt'): lambda f, v: {'range': {f: {'lt': v}}},
+                ('>=', 'gte'): lambda f, v: {'range': {f: {'gte': v}}},
+                ('<=', 'lte'): lambda f, v: {'range': {f: {'lte': v}}},
+                ('in',): lambda f, v: {'terms': {f: [v] if not isinstance(v, list) else v}},
+                ('nin',): lambda f, v: {'bool': {'must_not': [{'terms': {f: [v] if not isinstance(v, list) else v}}]}},
+            }
+
+            for op_tuple, handler in ops.items():
+                op_tuple = op_tuple if isinstance(op_tuple, tuple) else (op_tuple,)
+                op = next(iter(expr))
+
+                if op not in op_tuple:
+                    continue
+
+                field, value = expr[op]
+                if isinstance(value, dict) and 'literal' in value:
+                    value = value['literal']
+
+                return handler(field, value)
+
+        raise ValueError("Unsupported expression: " + str(expr))
