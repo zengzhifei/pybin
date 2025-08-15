@@ -576,7 +576,7 @@ class Sql2EsConverter:
         if 'orderby' in self.__parsed:
             self.__dsl['sort'] = self.__parse_order_by(self.__parsed['orderby'])
 
-        if 'limit' in self.__parsed and self.__dsl['size'] is None:
+        if 'limit' in self.__parsed and 'size' not in self.__dsl:
             self.__dsl['size'] = self.__parsed['limit']
 
         return self
