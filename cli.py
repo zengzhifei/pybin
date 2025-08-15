@@ -298,9 +298,18 @@ def goeks():
 def goes():
     parser = argparse.ArgumentParser()
     parser.add_argument('--raw', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument("tag", type=str)
     parser.add_argument('sql', type=str, nargs="?")
     args = parser.parse_args()
+
+    def __print_verbose(*infos: str):
+        if args.verbose is False:
+            return
+        print(sdk.beautify_separator_line())
+        for info in infos:
+            print(info)
+        print(sdk.beautify_separator_line())
 
     if args.sql is None:
         sql = sdk.get_multiline_input('enter sql and press enter twice to end:')
@@ -314,24 +323,29 @@ def goes():
     match_show_table_ddl = re.match(r'^\s*show\s+create\s+table\s+(.+)\s*$', sdk.trim(sql).rstrip(';'), re.IGNORECASE)
     if match_show_tables:
         url = f'http://{ip_host}/_cat/indices?v'
+        __print_verbose(url)
         response = requests.get(url)
-        print(response.text)
-        return
     elif match_show_table_ddl:
         table = match_show_table_ddl.group(1)
         url = f'http://{ip_host}/{table}/_mapping'
+        __print_verbose(url)
         response = requests.get(url)
     else:
         converter = sdk.Sql2EsConverter(sql).convert()
         index = converter.get_index()
         dsl = converter.get_dsl()
         url = f'http://{ip_host}/{index}/_search'
+        __print_verbose(url, dsl)
         response = requests.post(url, json=json.loads(dsl))
 
-    if args.raw:
-        print(response.json())
+    content_type = response.headers.get('Content-Type', 'text/plain; charset=UTF-8')
+    if 'application/json' in content_type:
+        if args.raw:
+            print(response.json())
+        else:
+            print(json.dumps(response.json(), indent=2))
     else:
-        print(json.dumps(response.json(), indent=2))
+        print(response.text)
 
 
 def sql2es():
@@ -1515,7 +1529,6 @@ def timeformator():
                 timestamp = int(timestamp) / 1000
             elif len(str(timestamp)) == 10:
                 timestamp = int(timestamp)
-                pass
             else:
                 raise ValueError("无效的时间戳")
             formatted_time = datetime.fromtimestamp(timestamp).strftime(args.format)

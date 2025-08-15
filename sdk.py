@@ -624,7 +624,8 @@ class Sql2EsConverter:
 
             # 通用比较操作符
             ops = {
-                ('=', '==', 'eq', '!=', '<>', 'neq'): lambda f, v: {'term': {f: v}},
+                ('=', '==', 'eq'): lambda f, v: {'term': {f: v}},
+                ('!=', '<>', 'neq'): lambda f, v: {'bool': {'must_not': [{'term': {f: v}}]}},
                 ('>', 'gt'): lambda f, v: {'range': {f: {'gt': v}}},
                 ('<', 'lt'): lambda f, v: {'range': {f: {'lt': v}}},
                 ('>=', 'gte'): lambda f, v: {'range': {f: {'gte': v}}},
