@@ -309,8 +309,17 @@ def goes():
         sql = args.sql
 
     ip_host = sdk.get_config(args.tag)
-    if sdk.trim(sql).lower().rstrip(';') == "show tables":
+
+    match_show_tables = re.match(r'^\s*show\s+tables\s*$', sdk.trim(sql).rstrip(';'), re.IGNORECASE)
+    match_show_table_ddl = re.match(r'^\s*show\s+create\s+table\s+(.+)\s*$', sdk.trim(sql).rstrip(';'), re.IGNORECASE)
+    if match_show_tables:
         url = f'http://{ip_host}/_cat/indices?v'
+        response = requests.get(url)
+        print(response.text)
+        return
+    elif match_show_table_ddl:
+        table = match_show_table_ddl.group(1)
+        url = f'http://{ip_host}/{table}/_mapping'
         response = requests.get(url)
     else:
         converter = sdk.Sql2EsConverter(sql).convert()
@@ -757,6 +766,12 @@ def http_file_server():
     class HttpFileRequestHandler(SimpleHTTPRequestHandler):
         def log_message(self, format, *args):
             pass
+
+        def guess_type(self, path):
+            url_parsed = urlparse(self.path)
+            if url_parsed.query.lower() == 'download':
+                return 'application/octet-stream'
+            return super().guess_type(path)
 
         def do_POST(self):
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
