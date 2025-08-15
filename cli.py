@@ -47,7 +47,7 @@ def pybin():
         source_path = os.environ.get("PYBIN_SOURCE_PATH")
         os.chdir(source_path)
         process = sdk.run_shell(f"{sys.executable} install.py")
-        print(process.stdout)
+        print(process.stdout.rstrip('\n'))
         return
 
     if args.config:

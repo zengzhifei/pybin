@@ -597,14 +597,14 @@ class Sql2EsConverter:
                     self.__dsl['size'] = 0
         return fields
 
-    def __parse_where(self, where) -> dict:
-        return self.__parse_where_logic(where)
-
     def __parse_order_by(self, order) -> list:
         if isinstance(order, dict):
             return [{order['value']: {'order': order.get('sort', 'asc')}}]
         else:
             return [{o['value']: {'order': o.get('sort', 'asc')}} for o in order]
+
+    def __parse_where(self, where) -> dict:
+        return self.__parse_where_logic(where)
 
     def __parse_where_logic(self, expr) -> dict:
         if isinstance(expr, str):
@@ -613,11 +613,14 @@ class Sql2EsConverter:
 
         if isinstance(expr, dict):
             if 'and' in expr:
-                return {'bool': {'must': [self.__parse_where_logic(e) for e in expr['and']]}}
+                must_dsl = {'bool': {'must': [self.__parse_where_logic(e) for e in expr['and']]}}
+                return self.__parse_where_after(must_dsl, 'must')
             elif 'or' in expr:
-                return {'bool': {'should': [self.__parse_where_logic(e) for e in expr['or']]}}
+                should_dsl = {'bool': {'should': [self.__parse_where_logic(e) for e in expr['or']]}}
+                return self.__parse_where_after(should_dsl, 'should')
             elif 'not' in expr:
-                return {'bool': {'must_not': [self.__parse_where_logic(expr['not'])]}}
+                must_not_dsl = {'bool': {'must_not': [self.__parse_where_logic(expr['not'])]}}
+                return self.__parse_where_after(must_not_dsl, 'must_not')
 
             # 通用比较操作符
             ops = {
@@ -628,6 +631,7 @@ class Sql2EsConverter:
                 ('<=', 'lte'): lambda f, v: {'range': {f: {'lte': v}}},
                 ('in',): lambda f, v: {'terms': {f: [v] if not isinstance(v, list) else v}},
                 ('nin',): lambda f, v: {'bool': {'must_not': [{'terms': {f: [v] if not isinstance(v, list) else v}}]}},
+                ('like',): lambda f, v: {'wildcard': {f: re.sub(r'^%|%$', '*', v)}}
             }
 
             for op_tuple, handler in ops.items():
@@ -638,9 +642,31 @@ class Sql2EsConverter:
                     continue
 
                 field, value = expr[op]
+                field = field.replace('\\', '')
                 if isinstance(value, dict) and 'literal' in value:
                     value = value['literal']
 
-                return handler(field, value)
+                query_clause = handler(field, value)
+
+                if '.' in field:
+                    nested_path = field.split('.')[0]
+                    return {'nested': {'path': nested_path, 'query': query_clause}}
+                else:
+                    return query_clause
 
         raise ValueError("Unsupported expression: " + str(expr))
+
+    def __parse_where_after(self, dsl, clause) -> str:
+        clause_list = dsl['bool'][clause]
+        nested_dict_list = {}
+        for clause_item in reversed(clause_list):
+            if 'nested' in clause_item:
+                nested_list = nested_dict_list.get(clause_item['nested']['path'], [])
+                nested_list.append(clause_item['nested']['query'])
+                nested_dict_list[clause_item['nested']['path']] = nested_list
+                clause_list.remove(clause_item)
+
+        for key, values in nested_dict_list.items():
+            dsl['bool'][clause].append({'nested': {'path': key, 'query': {'bool': {clause: values}}}})
+
+        return dsl
