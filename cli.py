@@ -1894,6 +1894,12 @@ def agent_helper():
         process = sdk.run_shell(pre_cmd + business_detail_cmd)
         print(process.stdout)
 
+    app_tuning_kanban_cmd = sqls['app_tuning_kanban'].format(db, args.input)
+    print(sdk.beautify_separator_line(separator='='))
+    print(app_tuning_kanban_cmd)
+    process = sdk.run_shell(pre_cmd + app_tuning_kanban_cmd)
+    print(process.stdout)
+
     print(sdk.beautify_separator_line(separator='='))
 
 
