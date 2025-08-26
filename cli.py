@@ -896,14 +896,17 @@ def http_file_server():
             for name in dir_list:
                 fullname = os.path.join(path, name)
                 display_name = link_name = name
+                download_name = urllib.parse.quote(link_name) + "?download"
                 if os.path.isdir(fullname):
                     display_name = name + "/"
                     link_name = name + "/"
+                    download_name = ""
                 if os.path.islink(fullname):
                     display_name = name + "@"
                 filename = os.getcwd() + '/' + display_path + display_name
                 r.append(f'<tr>'
-                         f'<td width="60%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
+                         f'<td width="40%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
+                         f'<td width="20%%"><a href="{download_name}">下载</a></td>'
                          f'<td width="20%%">{humanize.naturalsize(os.path.getsize(filename))}</td>'
                          f'<td width="20%%">{modification_date(filename)}</td>'
                          f'</tr>')
