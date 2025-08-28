@@ -268,7 +268,7 @@ def parse_bns(bns: str) -> List[dict]:
         if not service:
             continue
 
-        cols = service.split()
+        cols = service.split(' ')
 
         tags = cols[7]
         tags_map = dict(pair.split(':', 1) for pair in tags.split(','))
