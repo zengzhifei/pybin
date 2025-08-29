@@ -378,6 +378,14 @@ def run_popen(cmd: List[str], consumer: Callable[[Popen], None] = None) -> AnySt
         return stdout
 
 
+def align_columns(input_text: str) -> str:
+    process = subprocess.run(['column', '-t'], input=input_text, capture_output=True, text=True)
+    if process.returncode != 0:
+        raise RuntimeError(process.stderr)
+    else:
+        return process.stdout
+
+
 def iterate_process(condition: Callable[[str], bool], callback: Callable[[str, psutil.Process], None]) -> None:
     uid = os.getuid()
     current_pid = os.getpid()
