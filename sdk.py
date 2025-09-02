@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import hashlib
+import importlib
 import inspect
 import ipaddress
 import json
@@ -26,7 +27,10 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from moz_sql_parser import parse
 from requests import Response
 
-from ann import RuntimeKey, RuntimeMode
+if __package__:
+    from .ann import RuntimeKey, RuntimeMode, RuntimeEnv
+else:
+    from ann import RuntimeKey, RuntimeMode, RuntimeEnv
 
 
 def handle_exception_hook(ex: Type, value: str, trace):
@@ -468,6 +472,29 @@ def get_multiline_input(tip: str = '', end_input_number: int = 1) -> str:
             lines.append(line)
 
     return '\n'.join(lines)
+
+
+def get_funcs(py_path: str) -> dict:
+    funcs_map = {}
+
+    module_name = os.path.splitext(os.path.basename(py_path))[0]
+    module = importlib.import_module(module_name)
+
+    for name, item in module.__dict__.items():
+        if not (inspect.isfunction(item) and item.__module__ == module_name):
+            continue
+
+        env = getattr(item, RuntimeKey.ENV.value, RuntimeEnv.PYTHON.value)
+        if env == RuntimeEnv.NONE.value:
+            continue
+
+        functions = [] if env not in funcs_map else funcs_map[env]
+        info = {"name": name, "item": item}
+        functions.append(info)
+
+        funcs_map[env] = functions
+
+    return funcs_map
 
 
 class HttpServer:

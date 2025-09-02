@@ -1,2 +1,6 @@
-__version__ = "1.0.0"
-__author__ = "zengzhifei@outlook.com"
+__name__ = "pybin"
+__version__ = "2.0.0"
+__author__ = "zengzhifei"
+__author_email__ = "zengzhifei@outlook.com"
+__doc__ = "A tool SDK and CLI provided for the Python command line"
+__url__ = "https://github.com/zengzhifei/pybin"

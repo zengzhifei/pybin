@@ -69,7 +69,8 @@ def pybin():
         print(__author__)
         return
 
-    functions = "\n".join(sorted(["  " + func['name'] for functions in funcs().values() for func in functions]))
+    functions = "\n".join(
+        sorted(["  " + func['name'] for functions in sdk.get_funcs('cli.py').values() for func in functions]))
     if args.function:
         print(functions)
         return
@@ -1985,27 +1986,6 @@ def rcc_helper():
             group_kv_map[group_name] = "new group"
 
     print(json.dumps(group_kv_map))
-
-
-@runtime(RuntimeEnv.NONE)
-def funcs() -> dict:
-    funcs_map = {}
-
-    for name, item in globals().items():
-        if not (inspect.isfunction(item) and item.__module__ == __name__):
-            continue
-
-        env = getattr(item, RuntimeKey.ENV.value, RuntimeEnv.PYTHON.value)
-        if env == RuntimeEnv.NONE.value:
-            continue
-
-        functions = [] if env not in funcs_map else funcs_map[env]
-        info = {"name": name, "item": item}
-        functions.append(info)
-
-        funcs_map[env] = functions
-
-    return funcs_map
 
 
 @runtime(RuntimeEnv.NONE)

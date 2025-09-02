@@ -21,10 +21,9 @@ def get_alias_config():
 
 def generate_shell(filename: str) -> None:
     import sdk
-    from cli import funcs as functions
     from ann import RuntimeEnv, RuntimeKey
 
-    funcs_map = functions()
+    funcs_map = sdk.get_funcs('cli.py')
     shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
 
     shell_content = '''\
@@ -70,7 +69,6 @@ def install_requirements(args):
 
 def install_bin(args):
     import sdk
-    from cli import funcs as functions
     from ann import RuntimeEnv
 
     root_path = sdk.get_home().joinpath(".pybin")
@@ -107,7 +105,7 @@ def install_bin(args):
     os.chmod(current_path.joinpath("__about__.py"), mode=mode)
     os.chmod(root_path.joinpath("config.json"), mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    funcs_map = functions()
+    funcs_map = sdk.get_funcs('cli.py')
     for env, funcs in funcs_map.items():
         if env == RuntimeEnv.PYTHON.value:
             for func in funcs:
@@ -139,6 +137,15 @@ def install_bin(args):
         sdk.write_file_content_by_append(config, f'\n[[ -s "{py_profile}" ]] && source "{py_profile}"\n')
 
 
+def install_site_packages(args):
+    with open(os.devnull, "wb") as devnull:
+        try:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '.'], stdout=devnull)
+        except subprocess.CalledProcessError:
+            if not args.ignore_error:
+                sys.exit(1)
+
+
 def install():
     alias_config = get_alias_config()
 
@@ -151,6 +158,7 @@ def install():
     pre_version_check()
     install_requirements(args)
     install_bin(args)
+    install_site_packages(args)
     print("installed successfully.")
 
 
