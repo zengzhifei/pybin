@@ -21,7 +21,7 @@ import time
 import urllib
 from datetime import datetime, timedelta
 from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, SimpleHTTPRequestHandler
+from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -31,7 +31,7 @@ import requests as requests
 
 import sdk
 from __about__ import __version__, __author__
-from ann import RuntimeEnv, RuntimeKey, RuntimeMode, runtime
+from ann import RuntimeEnv, runtime
 
 
 def pybin():
@@ -1076,7 +1076,7 @@ def java_deploy_server():
     parser.add_argument("-r", "--runtime", type=str, required=True)
     args = parser.parse_args()
 
-    def post_method(handler: BaseHTTPRequestHandler):
+    def post_method(handler):
         parse = urlparse(handler.path)
         if parse.path == '/deploy':
             form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
@@ -1159,7 +1159,7 @@ def file_deploy_server():
     parser.add_argument("--cmd", type=str, required=False, help="if succeed command to run")
     args = parser.parse_args()
 
-    def post_method(handler: BaseHTTPRequestHandler):
+    def post_method(handler):
         parse = urlparse(handler.path)
         if parse.path == '/deploy':
             form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
@@ -1989,21 +1989,5 @@ def rcc_helper():
     print(json.dumps(group_kv_map))
 
 
-@runtime(RuntimeEnv.NONE)
-def main():
-    os.environ[RuntimeKey.MODE.value] = RuntimeMode.PRODUCT.value
-    sys.excepthook = sdk.handle_exception_hook
-
-    if os.path.basename(os.path.realpath(__file__)) == os.path.basename(sys.argv[0]):
-        del sys.argv[0]
-
-    func_name = os.path.basename(sys.argv[0])
-
-    if func_name not in globals():
-        raise RuntimeError(f"Unknown command: {func_name}")
-
-    globals()[func_name]()
-
-
 if __name__ == "__main__":
-    main()
+    sdk.proxy_main()
