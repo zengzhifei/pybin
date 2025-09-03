@@ -448,6 +448,14 @@ def crc32(key: str) -> int:
     return crc_value
 
 
+def get_file_md5(file_path: str) -> str:
+    hash_md5 = hashlib.md5()
+    with open(file_path, 'rb') as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()
+
+
 def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, min_width: int = 40) -> str:
     columns = os.get_terminal_size().columns
     columns = max(columns, min_width)
@@ -478,7 +486,9 @@ def get_module_funcs(py_path: str) -> dict:
     funcs_map = {}
 
     module_name = os.path.splitext(os.path.basename(py_path))[0]
-    module = importlib.import_module(module_name)
+    spec = importlib.util.spec_from_file_location(module_name, py_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
 
     for name, item in module.__dict__.items():
         if not (inspect.isfunction(item) and item.__module__ == module_name):

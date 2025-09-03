@@ -61,6 +61,21 @@ def install_requirements(args):
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt',
                                    '--disable-pip-version-check'], stdout=devnull)
+
+            import sdk
+            other_config_file = sdk.get_home().joinpath(".pybin_config.json")
+            if not other_config_file.exists():
+                return
+            other_config = sdk.read_json_file(str(other_config_file))
+            for extend_cli in other_config.get('__extend_clis', []):
+                if not Path(extend_cli).exists():
+                    continue
+                requirements = Path.absolute(Path(extend_cli)).parent.joinpath('requirements.txt')
+                if not requirements.exists():
+                    continue
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements,
+                                       '--disable-pip-version-check'], stdout=devnull)
+
         except subprocess.CalledProcessError:
             if not args.ignore_error:
                 sys.exit(1)
@@ -68,7 +83,7 @@ def install_requirements(args):
 
 def install_bin(args):
     import sdk
-    from ann import RuntimeEnv
+    from ann import RuntimeEnv, RuntimeKey
 
     root_path = sdk.get_home().joinpath(".pybin")
     current_path = Path.absolute(Path(__file__)).parent
@@ -92,15 +107,12 @@ def install_bin(args):
     shutil.copy(current_path.joinpath("__about__.py"), root_path)
     sdk.write_json_file(str(root_path.joinpath("config.json")), config)
 
-    generate_shell(str(root_path.joinpath("cli.sh")))
-
     mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
     mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
     os.chmod(root_path.joinpath("sdk.py"), mode=mode)
     os.chmod(root_path.joinpath("ann.py"), mode=mode)
     os.chmod(root_path.joinpath("cli.py"), mode=mode)
-    os.chmod(root_path.joinpath("cli.sh"), mode=mode)
     os.chmod(current_path.joinpath("__about__.py"), mode=mode)
     os.chmod(root_path.joinpath("config.json"), mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
@@ -108,6 +120,45 @@ def install_bin(args):
     python_funcs = funcs_map.get(RuntimeEnv.PYTHON.value, {})
     for name, func in python_funcs.items():
         os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(name))
+
+    shell_content = '''\
+        #!/usr/bin/env sh
+        '''
+    template = '''
+        {func_name}() {{
+            result=$({cli_file} "{func_name}" "$@")
+
+            if [ $? -eq {exit_code} ]; then
+                eval "$result"
+            elif [ -n "$result" ]; then
+                # shellcheck disable=SC2039
+                echo -e "$result"
+            fi
+        }}
+        '''
+    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, {})
+    for name, func in shell_funcs.items():
+        shell_exit_code = getattr(func, RuntimeKey.EXIT_CODE.value, 0)
+        shell_content += template.format(cli_file='cli.py', func_name=name, exit_code=shell_exit_code)
+
+    for extend_cli in config.get('__extend_clis', []):
+        if not Path(extend_cli).exists():
+            continue
+        new_extend_cli = sdk.get_file_md5(extend_cli) + ".py"
+        root_extend_cli = root_path.joinpath(new_extend_cli)
+        shutil.copy(extend_cli, root_extend_cli)
+        os.chmod(root_extend_cli, mode=mode)
+        extend_funcs_map = sdk.get_module_funcs(root_extend_cli)
+        extend_python_funcs = extend_funcs_map.get(RuntimeEnv.PYTHON.value, {})
+        for extend_name, extend_func in extend_python_funcs.items():
+            os.symlink(root_extend_cli, root_path.joinpath(extend_name))
+        extend_shell_funcs = extend_funcs_map.get(RuntimeEnv.SHELL.value, {})
+        for extend_name, extend_func in extend_shell_funcs.items():
+            shell_exit_code = getattr(extend_func, RuntimeKey.EXIT_CODE.value, 0)
+            shell_content += template.format(cli_file=new_extend_cli, func_name=extend_name, exit_code=shell_exit_code)
+
+    sdk.write_file_content(str(root_path.joinpath("cli.sh")), textwrap.dedent(shell_content))
+    os.chmod(root_path.joinpath("cli.sh"), mode=mode)
 
     py_profile = root_path.joinpath("pybin_profile")
     py_config = [
