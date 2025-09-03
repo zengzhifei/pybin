@@ -70,7 +70,8 @@ def pybin():
         return
 
     functions = "\n".join(
-        sorted(["  " + func['name'] for functions in sdk.get_funcs('cli.py').values() for func in functions]))
+        sorted(["  " + k for functions in sdk.get_module_funcs('cli.py').values() for k, v in functions.items()])
+    )
     if args.function:
         print(functions)
         return

@@ -23,9 +23,6 @@ def generate_shell(filename: str) -> None:
     import sdk
     from ann import RuntimeEnv, RuntimeKey
 
-    funcs_map = sdk.get_funcs('cli.py')
-    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, [])
-
     shell_content = '''\
     #!/usr/bin/env sh
     '''
@@ -43,9 +40,11 @@ def generate_shell(filename: str) -> None:
     }}
     '''
 
-    for info in shell_funcs:
-        shell_exit_code = getattr(info['item'], RuntimeKey.EXIT_CODE.value, 0)
-        shell_content += template.format(func_name=info['name'], exit_code=shell_exit_code)
+    funcs_map = sdk.get_module_funcs('cli.py')
+    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, {})
+    for name, func in shell_funcs.items():
+        shell_exit_code = getattr(func, RuntimeKey.EXIT_CODE.value, 0)
+        shell_content += template.format(func_name=name, exit_code=shell_exit_code)
 
     sdk.write_file_content(filename, textwrap.dedent(shell_content))
 
@@ -105,11 +104,10 @@ def install_bin(args):
     os.chmod(current_path.joinpath("__about__.py"), mode=mode)
     os.chmod(root_path.joinpath("config.json"), mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    funcs_map = sdk.get_funcs('cli.py')
-    for env, funcs in funcs_map.items():
-        if env == RuntimeEnv.PYTHON.value:
-            for func in funcs:
-                os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(func['name']))
+    funcs_map = sdk.get_module_funcs('cli.py')
+    python_funcs = funcs_map.get(RuntimeEnv.PYTHON.value, {})
+    for name, func in python_funcs.items():
+        os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(name))
 
     py_profile = root_path.joinpath("pybin_profile")
     py_config = [

@@ -474,7 +474,7 @@ def get_multiline_input(tip: str = '', end_input_number: int = 1) -> str:
     return '\n'.join(lines)
 
 
-def get_funcs(py_path: str) -> dict:
+def get_module_funcs(py_path: str) -> dict:
     funcs_map = {}
 
     module_name = os.path.splitext(os.path.basename(py_path))[0]
@@ -488,13 +488,33 @@ def get_funcs(py_path: str) -> dict:
         if env == RuntimeEnv.NONE.value:
             continue
 
-        functions = [] if env not in funcs_map else funcs_map[env]
-        info = {"name": name, "item": item}
-        functions.append(info)
+        functions = {} if env not in funcs_map else funcs_map[env]
+        functions[name] = item
 
         funcs_map[env] = functions
 
     return funcs_map
+
+
+def proxy_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
+    os.environ[RuntimeKey.MODE.value] = runtime_mode.value
+
+    sys.excepthook = handle_exception_hook
+
+    stack = inspect.stack()
+    caller = stack[1]
+    cli = caller.filename
+
+    if os.path.basename(os.path.realpath(cli)) == os.path.basename(sys.argv[0]):
+        del sys.argv[0]
+
+    func_name = os.path.basename(sys.argv[0])
+
+    funcs_map = {k: v for functions in get_module_funcs(cli).values() for k, v in functions.items()}
+    if func_name not in funcs_map:
+        raise RuntimeError(f"Unknown command: {func_name}")
+
+    funcs_map[func_name]()
 
 
 class HttpServer:
