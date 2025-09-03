@@ -503,10 +503,13 @@ def proxy_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
 
     stack = inspect.stack()
     caller = stack[1]
-    cli = caller.filename
+    cli = os.path.realpath(caller.filename)
 
     if os.path.basename(os.path.realpath(cli)) == os.path.basename(sys.argv[0]):
         del sys.argv[0]
+
+    if len(sys.argv) <= 0:
+        raise RuntimeError("Missing command entry parameters")
 
     func_name = os.path.basename(sys.argv[0])
 
