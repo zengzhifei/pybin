@@ -170,8 +170,8 @@ def upload_file_with_curl(url: str, file_path: str) -> AnyStr:
 
 def get_config(key: str, is_caller: bool = True, config_file: str = None) -> Any:
     if config_file is None:
-        current_dir = os.path.dirname(os.path.realpath(__file__))
-        config_file = os.path.join(current_dir, "config.json")
+        runtime_path = os.environ.get("PYBIN_RUNTIME_PATH")
+        config_file = os.path.join(runtime_path, "config.json")
 
     if not os.path.exists(config_file):
         raise FileNotFoundError(f"{config_file} is not found")

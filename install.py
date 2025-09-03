@@ -19,36 +19,6 @@ def get_alias_config():
     }
 
 
-def generate_shell(filename: str) -> None:
-    import sdk
-    from ann import RuntimeEnv, RuntimeKey
-
-    shell_content = '''\
-    #!/usr/bin/env sh
-    '''
-
-    template = '''
-    {func_name}() {{
-        result=$(cli.py "{func_name}" "$@")
-
-        if [ $? -eq {exit_code} ]; then
-            eval "$result"
-        elif [ -n "$result" ]; then
-            # shellcheck disable=SC2039
-            echo -e "$result"
-        fi
-    }}
-    '''
-
-    funcs_map = sdk.get_module_funcs('cli.py')
-    shell_funcs = funcs_map.get(RuntimeEnv.SHELL.value, {})
-    for name, func in shell_funcs.items():
-        shell_exit_code = getattr(func, RuntimeKey.EXIT_CODE.value, 0)
-        shell_content += template.format(func_name=name, exit_code=shell_exit_code)
-
-    sdk.write_file_content(filename, textwrap.dedent(shell_content))
-
-
 def pre_version_check():
     min_version = (3, 6, 0)
     if sys.version_info < min_version:
@@ -141,6 +111,7 @@ def install_bin(args):
         shell_exit_code = getattr(func, RuntimeKey.EXIT_CODE.value, 0)
         shell_content += template.format(cli_file='cli.py', func_name=name, exit_code=shell_exit_code)
 
+    installed_clis = str(root_path.joinpath("cli.py"))
     for extend_cli in config.get('__extend_clis', []):
         if not Path(extend_cli).exists():
             continue
@@ -156,6 +127,7 @@ def install_bin(args):
         for extend_name, extend_func in extend_shell_funcs.items():
             shell_exit_code = getattr(extend_func, RuntimeKey.EXIT_CODE.value, 0)
             shell_content += template.format(cli_file=new_extend_cli, func_name=extend_name, exit_code=shell_exit_code)
+        installed_clis = installed_clis + "|" + str(root_extend_cli)
 
     sdk.write_file_content(str(root_path.joinpath("cli.sh")), textwrap.dedent(shell_content))
     os.chmod(root_path.joinpath("cli.sh"), mode=mode)
@@ -164,6 +136,8 @@ def install_bin(args):
     py_config = [
         f'source {root_path.joinpath("cli.sh")}',
         f'export PATH="{root_path}:$PATH"',
+        f'export PYBIN_CLIS="{installed_clis}"',
+        f'export PYBIN_RUNTIME_PATH="{root_path}"',
         f'export PYBIN_SOURCE_PATH="{current_path}"'
     ]
 
