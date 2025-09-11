@@ -348,7 +348,8 @@ def dusort():
     parser.add_argument('--depth', type=int, default=1)
     args = parser.parse_args()
 
-    result = sdk.run_shell(f"du -h --max-depth={args.depth} | sort -rh")
+    cmd = f'(du -h --max-depth={args.depth} . 2>/dev/null || du -h -d 1 .) | sort -rh'
+    result = sdk.run_shell(cmd)
     print(result.stdout)
 
 
