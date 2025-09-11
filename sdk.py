@@ -27,9 +27,9 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from moz_sql_parser import parse
 from requests import Response
 
-if __package__:
+try:
     from .ann import RuntimeKey, RuntimeMode, RuntimeEnv
-else:
+except ImportError:
     from ann import RuntimeKey, RuntimeMode, RuntimeEnv
 
 
