@@ -507,7 +507,8 @@ def get_module_funcs(py_path: str) -> dict:
 
 
 def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
-    os.environ[RuntimeKey.MODE.value] = runtime_mode.value
+    if RuntimeKey.MODE.value not in os.environ:
+        os.environ[RuntimeKey.MODE.value] = runtime_mode.value
 
     sys.excepthook = handle_exception_hook
 
