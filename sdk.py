@@ -506,7 +506,7 @@ def get_module_funcs(py_path: str) -> dict:
     return funcs_map
 
 
-def proxy_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
+def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
     os.environ[RuntimeKey.MODE.value] = runtime_mode.value
 
     sys.excepthook = handle_exception_hook

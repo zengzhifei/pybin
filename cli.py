@@ -1449,4 +1449,4 @@ def table2md():
 
 
 if __name__ == "__main__":
-    sdk.proxy_main()
+    sdk.run_main()
