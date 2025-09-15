@@ -26,6 +26,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from moz_sql_parser import parse
 from requests import Response
+from requests.auth import HTTPBasicAuth
 
 try:
     from .ann import RuntimeKey, RuntimeMode, RuntimeEnv
@@ -454,6 +455,10 @@ def get_file_md5(file_path: str) -> str:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
+
+def basic_auth(username: str, password: str) -> str:
+    return requests.auth._basic_auth_str(username, password)
 
 
 def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, min_width: int = 40) -> str:

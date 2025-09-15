@@ -754,12 +754,37 @@ def http_file_server():
     parser.add_argument('--dir', type=str, required=False, default=os.getcwd())
     parser.add_argument('-p', '--port', type=int, required=False, default=8899)
     parser.add_argument('-d', '--daemon', action='store_true')
+    sub_parser = parser.add_subparsers(dest='mode')
+    auth = sub_parser.add_parser('auth', help='use auth mode')
+    auth.add_argument('--username', type=str, required=True)
+    auth.add_argument('--password', type=str, required=True)
     args = parser.parse_args()
 
     def modification_date(filename):
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(filename)))
 
     class HttpFileRequestHandler(SimpleHTTPRequestHandler):
+        def __send_auth_request(self):
+            self.send_response(401)
+            self.send_header("WWW-Authenticate", 'Basic realm="Protected"')
+            self.send_header("Content-type", "text/html")
+            self.end_headers()
+            self.wfile.write(b"Authentication required.")
+
+        def __is_authenticated(self):
+            if args.mode == "auth":
+                auth_header = self.headers.get("Authorization")
+                return auth_header == sdk.basic_auth(args.username, args.password)
+            else:
+                return True
+
+        def parse_request(self):
+            if not super().parse_request():
+                return False
+            if not self.__is_authenticated():
+                self.__send_auth_request()
+            return True
+
         def log_message(self, format, *args):
             pass
 
