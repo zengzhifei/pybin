@@ -24,6 +24,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import humanize
+import pandas as pd
 import psutil as psutil
 import requests as requests
 
@@ -1413,19 +1414,33 @@ def timeformator():
             print(timestamp)
 
 
-def pandas():
+def read_excel():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sheet_name", type=int, default=0)
-    parser.add_argument("--skiprows", type=int, default=0)
-    parser.add_argument("--nrows", type=int, default=None)
-    parser.add_argument("--usecols", type=int, nargs='+')
+    parser.add_argument("--sheet", type=int, default=0)
+    parser.add_argument("--header", type=int)
+    parser.add_argument("--read_cols", type=int, nargs='+')
+    parser.add_argument("--skip_rows", type=int, nargs='+')
+    parser.add_argument("--read_rows", type=int)
     parser.add_argument("excel", type=str)
     args = parser.parse_args()
-    import pandas as pd
-    df = pd.read_excel(args.excel, sheet_name=args.sheet_name, skiprows=args.skiprows, nrows=args.nrows,
-                       usecols=args.usecols)
+
+    df = pd.read_excel(args.excel, engine="openpyxl", sheet_name=args.sheet, header=args.header, usecols=args.read_cols,
+                       skiprows=args.skip_rows, nrows=args.read_rows)
+
     for value in df.values:
         print("\t".join(map(str, value)))
+
+
+def write_excel():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-s', '--separator', type=str, default='\t')
+    parser.add_argument("excel", type=str)
+    args = parser.parse_args()
+
+    data = [line.strip().split(args.separator) for line in sys.stdin if line.strip()]
+    df = pd.DataFrame(data)
+
+    df.to_excel(args.excel, index=False, header=False)
 
 
 def table2md():
