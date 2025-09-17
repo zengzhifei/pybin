@@ -7,12 +7,17 @@ import json
 import logging
 import os
 import re
+import smtplib
 import socket
 import subprocess
 import sys
 import threading
 import traceback
 import zlib
+from email.mime.application import MIMEApplication
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formataddr
 from http.server import HTTPServer, BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from subprocess import Popen
@@ -423,6 +428,40 @@ def get_logging(filename: str, level: int = logging.INFO) -> logging:
 
 def format_json(json_data: dict) -> str:
     return json.dumps(json_data, indent=4, ensure_ascii=False)
+
+
+def send_email(smtp_server: str, smtp_port: int, smtp_user: str, smtp_password: str, to_emails: list,
+               subject: str, body: str, from_name: str = None, cc_emails: list = None, attachments: list = None,
+               is_html: bool = False, use_ssl: bool = True) -> None:
+    from_email = smtp_user
+    cc_emails = cc_emails or []
+    attachments = attachments or []
+
+    msg = MIMEMultipart()
+    msg['From'] = formataddr((from_name, from_email)) if from_name else from_email
+    msg['To'] = ', '.join(to_emails)
+    msg['Cc'] = ', '.join(cc_emails)
+    msg['Subject'] = subject
+
+    if is_html:
+        msg.attach(MIMEText(body, 'html', 'utf-8'))
+    else:
+        msg.attach(MIMEText(body, 'plain', 'utf-8'))
+
+    for file_path in attachments:
+        with open(file_path, 'rb') as f:
+            part = MIMEApplication(f.read())
+            part.add_header('Content-Disposition', 'attachment', filename=file_path.split('/')[-1])
+            msg.attach(part)
+
+    if use_ssl:
+        server = smtplib.SMTP_SSL(smtp_server, smtp_port)
+    else:
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        server.starttls()
+    server.login(smtp_user, smtp_password)
+    server.sendmail(from_email, to_emails + cc_emails, msg.as_string())
+    server.quit()
 
 
 def aes_encrypt(content: bytes, key: str) -> bytes:

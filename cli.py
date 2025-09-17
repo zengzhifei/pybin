@@ -18,6 +18,7 @@ import sys
 import time
 import urllib
 from datetime import datetime, timedelta
+from decimal import Decimal
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
@@ -1486,6 +1487,50 @@ def table2md():
         table += '| ' + ' | '.join(map(str, rows)) + ' |\n'
 
     print(table)
+
+
+def stock_query():
+    parser = argparse.ArgumentParser()
+    sub_parser = parser.add_subparsers(dest='alert', required=True)
+    email_alert = sub_parser.add_parser('email_alert')
+    email_alert.add_argument('--to', type=str, nargs='+', required=True)
+    query = sub_parser.add_parser('query')
+    query.add_argument('--codes', type=str, nargs='+', required=True)
+    args = parser.parse_args()
+
+    url = sdk.get_config("url")
+
+    def query_stock(url, codes):
+        stock_map = dict()
+        for code in codes:
+            url = url.format(code=code)
+            resp = requests.get(url)
+            data = resp.text.split("~")
+            if len(data) > 3:
+                stock_map[code] = data[3]
+        return stock_map
+
+    if args.alert == 'email_alert':
+        smtp_server = sdk.get_config('smtp_server')
+        smtp_port = sdk.get_config('smtp_port')
+        smtp_user = sdk.get_config('smtp_user')
+        smtp_password = sdk.get_config('smtp_password')
+        from_name = sdk.get_config('from_name')
+        code_map: dict = sdk.get_config('codes')
+        subject = '实时股价'
+
+        body = ''
+        stock_map = query_stock(url, code_map.keys())
+        for code, price in stock_map.items():
+            if Decimal(price) > Decimal(code_map[code]):
+                body += f'{code}: {price}\n'
+        if body != '':
+            sdk.send_email(smtp_server=smtp_server, smtp_port=smtp_port, smtp_user=smtp_user,
+                           smtp_password=smtp_password, from_name=from_name, subject=subject,
+                           body=body, to_emails=args.to)
+
+    elif args.alert == 'query':
+        print(query_stock(url, args.codes))
 
 
 if __name__ == "__main__":
