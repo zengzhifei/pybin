@@ -765,14 +765,14 @@ def http_file_server():
         return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(filename)))
 
     class HttpFileRequestHandler(SimpleHTTPRequestHandler):
-        def __send_auth_request(self):
+        def _send_auth_request(self):
             self.send_response(401)
             self.send_header("WWW-Authenticate", 'Basic realm="Protected"')
             self.send_header("Content-type", "text/html")
             self.end_headers()
             self.wfile.write(b"Authentication required.")
 
-        def __is_authenticated(self):
+        def _is_authenticated(self):
             if args.mode == "auth":
                 auth_header = self.headers.get("Authorization")
                 return auth_header == sdk.basic_auth(args.username, args.password)
@@ -782,8 +782,9 @@ def http_file_server():
         def parse_request(self):
             if not super().parse_request():
                 return False
-            if not self.__is_authenticated():
-                self.__send_auth_request()
+            if not self._is_authenticated():
+                self._send_auth_request()
+                return False
             return True
 
         def log_message(self, format, *args):
