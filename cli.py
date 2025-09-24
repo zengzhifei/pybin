@@ -619,7 +619,7 @@ def hi():
 def csum():
     total_sum = 0
     for line in sys.stdin:
-        number = int(line.strip())
+        number = float(line.strip())
         total_sum += number
 
     print(total_sum)
@@ -734,7 +734,7 @@ def crc32gen():
     print(sdk.crc32(args.input))
 
 
-def killer():
+def pkiller():
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str)
     args = parser.parse_args()
@@ -1154,7 +1154,7 @@ def java_deploy():
     print(f"ready to deploy package: {package}...", end="\n\n")
 
     response = sdk.upload_file_with_curl(args.url, package)
-    print(f"\n\n{response}")
+    print(f"\n\n{response}\n{sdk.format_timestamp()}")
 
 
 def file_deploy_server():
@@ -1230,7 +1230,7 @@ def file_deploy():
     try:
         print(f"ready to deploy file: {file}...", end="\n\n")
         response = sdk.upload_file_with_curl(args.url, file)
-        print(f"\n\n{response}")
+        print(f"\n\n{response}\n{sdk.format_timestamp()}")
     finally:
         if need_remove:
             os.remove(file)
@@ -1412,33 +1412,30 @@ def concurrency():
     sdk.concurrent_execute(tasks=tasks, handler=handle, concurrent=args.concurrent)
 
 
-def timeformator():
+def datetime_calc():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--format", type=str, default="%Y-%m-%d %H:%M:%S")
-    parser.add_argument("--from-ts", action="store_true")
-    parser.add_argument("time_str", type=str, nargs="?")
+    parser.add_argument("input", type=str, nargs="*")
     args = parser.parse_args()
 
-    if args.time_str is not None:
-        time_strs = [args.time_str]
+    if args.input is not None:
+        date_times = args.input
     else:
-        time_strs = sys.stdin.read().strip().split('\n')
+        date_times = sys.stdin.read().strip().split('\n')
 
-    if args.from_ts:
-        for timestamp in time_strs:
-            if len(str(timestamp)) == 13:
-                timestamp = int(timestamp) / 1000
-            elif len(str(timestamp)) == 10:
-                timestamp = int(timestamp)
-            else:
-                raise ValueError("无效的时间戳")
-            formatted_time = datetime.fromtimestamp(timestamp).strftime(args.format)
-            print(formatted_time)
-    else:
-        for time_str in time_strs:
-            time_array = time.strptime(time_str, args.format)
-            timestamp = int(time.mktime(time_array))
-            print(timestamp)
+    for date_time in date_times:
+        if date_time.isdigit():
+            ts = int(date_time) / 1000 if int(date_time) > 1e12 else int(date_time)
+            print(datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S"))
+        else:
+            formats = [
+                "%Y-%m-%d", "%Y/%m/%d", "%Y-%m-%d %H:%M:%S",
+                "%Y/%m/%d %H:%M:%S", "%Y%m%d", "%Y%m%d%H%M%S",
+            ]
+            for fmt in formats:
+                try:
+                    print(int(datetime.strptime(date_time, fmt).timestamp()))
+                except ValueError:
+                    continue
 
 
 def read_excel():

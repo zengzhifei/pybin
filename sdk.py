@@ -14,6 +14,7 @@ import sys
 import threading
 import traceback
 import zlib
+from datetime import datetime
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -428,6 +429,37 @@ def get_logging(filename: str, level: int = logging.INFO) -> logging:
 
 def format_json(json_data: dict) -> str:
     return json.dumps(json_data, indent=4, ensure_ascii=False)
+
+
+def format_timestamp(timestamp: int = None, fmt: str = '%Y-%m-%d %H:%M:%S') -> str:
+    if timestamp is None:
+        dt = datetime.now()
+    else:
+        if timestamp > 1e12:
+            dt = datetime.fromtimestamp(timestamp / 1000)
+        else:
+            dt = datetime.fromtimestamp(timestamp)
+    return dt.strftime(fmt)
+
+
+def to_timestamp(datetime_str: str, ms: bool = False) -> int:
+    formats = [
+        "%Y-%m-%d %H:%M:%S", "%Y/%m/%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M",
+        "%Y-%m-%d", "%Y/%m/%d", "%Y%m%d%H%M%S", "%Y%m%d"
+    ]
+
+    dt = None
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(datetime_str, fmt)
+            break
+        except ValueError:
+            continue
+
+    if dt is None:
+        raise ValueError("the date format cannot be parsed")
+
+    return int(dt.timestamp() * 1000) if ms else int(dt.timestamp())
 
 
 def send_email(smtp_server: str, smtp_port: int, smtp_user: str, smtp_password: str, to_emails: list,
