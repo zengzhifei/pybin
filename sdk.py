@@ -7,12 +7,14 @@ import json
 import logging
 import os
 import re
+import shutil
 import smtplib
 import socket
 import subprocess
 import sys
 import threading
 import traceback
+import unicodedata
 import zlib
 from datetime import datetime
 from email.mime.application import MIMEApplication
@@ -532,10 +534,22 @@ def basic_auth(username: str, password: str) -> str:
     return requests.auth._basic_auth_str(username, password)
 
 
-def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, min_width: int = 40) -> str:
-    columns = os.get_terminal_size().columns
-    columns = max(columns, min_width)
-    return color + Style.NORMAL + separator * columns + Style.RESET_ALL
+def get_display_width(text: str) -> int:
+    return sum(2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1 for c in text)
+
+
+def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, text: str = None) -> str:
+    columns = shutil.get_terminal_size().columns
+
+    if text:
+        text = f' {text} '
+        separator_length = max(columns - get_display_width(text), 0)
+        left_separator_length = separator_length // 2
+        right_separator_length = separator_length - left_separator_length
+        line = left_separator_length * separator + text + right_separator_length * separator
+    else:
+        line = separator * columns
+    return color + Style.NORMAL + line + Style.RESET_ALL
 
 
 def get_multiline_input(tip: str = '', end_input_number: int = 1) -> str:
