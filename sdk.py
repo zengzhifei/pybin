@@ -352,7 +352,8 @@ def find_available_port(start_port: int, end_port: int) -> int:
 
 
 def run_shell(cmd: str) -> subprocess.CompletedProcess:
-    process = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    process = subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             universal_newlines=True)
     if process.returncode != 0:
         raise RuntimeError(process.stderr)
     else:
