@@ -538,7 +538,8 @@ def get_display_width(text: str) -> int:
     return sum(2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1 for c in text)
 
 
-def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, text: str = None) -> str:
+def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, text: str = None,
+                            text_color: str = Fore.CYAN) -> str:
     columns = shutil.get_terminal_size().columns
 
     if text:
@@ -546,9 +547,11 @@ def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, text: 
         separator_length = max(columns - get_display_width(text), 0)
         left_separator_length = separator_length // 2
         right_separator_length = separator_length - left_separator_length
-        line = left_separator_length * separator + text + right_separator_length * separator
+        line = (color + Style.NORMAL + left_separator_length * separator
+                + text_color + Style.NORMAL + text
+                + color + Style.NORMAL + right_separator_length * separator)
     else:
-        line = separator * columns
+        line = color + Style.NORMAL + separator * columns
     return color + Style.NORMAL + line + Style.RESET_ALL
 
 
