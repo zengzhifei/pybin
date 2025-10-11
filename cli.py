@@ -575,20 +575,24 @@ def lgrep():
 
 def hi():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--text", type=str, nargs="*")
     parser.add_argument("--link", type=str, nargs="*")
     parser.add_argument("--label", type=str, nargs="*")
     parser.add_argument("--image", type=str)
     parser.add_argument("--at", type=str, nargs="*")
     parser.add_argument("--at-all", action="store_true")
+    parser.add_argument("text", type=str, nargs="?")
     args = parser.parse_args()
+
+    if args.text is not None:
+        text = args.text
+    else:
+        text = sys.stdin.read()
 
     url = sdk.get_config("url")
     header = {'toid': list(map(int, sdk.get_config("toid").split(",")))}
     body = []
-    if args.text is not None:
-        for text in args.text:
-            body.append({'content': text, 'type': 'TEXT'})
+    if text:
+        body.append({'content': text, 'type': 'TEXT'})
     if args.link is not None:
         for i in range(0, len(args.link)):
             link = args.link[i]
@@ -600,7 +604,7 @@ def hi():
         body.append({'content': args.image, 'type': 'IMAGE'})
 
     if len(body) == 0:
-        parser.exit(1, parser.format_help())
+        parser.exit(1)
 
     if (args.at is not None) or (args.at_all is True):
         item = {'type': 'AT'}
@@ -614,6 +618,30 @@ def hi():
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url, headers=headers, data=data, timeout=10)
     print(response.json())
+
+
+def email_sender():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--subject', type=str, required=True)
+    parser.add_argument('--to', type=str, required=True)
+    parser.add_argument('body', type=str, nargs="?")
+    args = parser.parse_args()
+
+    if args.body is not None:
+        body = args.body
+    else:
+        body = sys.stdin.read()
+
+    smtp_server = sdk.get_config('smtp_server')
+    smtp_port = sdk.get_config('smtp_port')
+    smtp_user = sdk.get_config('smtp_user')
+    smtp_password = sdk.get_config('smtp_password')
+    from_name = sdk.get_config('smtp_name')
+
+    if body:
+        sdk.send_email(smtp_server=smtp_server, smtp_port=smtp_port, smtp_user=smtp_user,
+                       smtp_password=smtp_password, from_name=from_name, subject=args.subject,
+                       body=body, to_emails=args.to.strip().split(','))
 
 
 def csum():
@@ -1487,48 +1515,22 @@ def table2md():
     print(table)
 
 
-def stock_query():
+def istock():
     parser = argparse.ArgumentParser()
-    sub_parser = parser.add_subparsers(dest='alert', required=True)
-    email_alert = sub_parser.add_parser('email_alert')
-    email_alert.add_argument('--to', type=str, nargs='+', required=True)
-    query = sub_parser.add_parser('query')
-    query.add_argument('--codes', type=str, nargs='+', required=True)
+    parser.add_argument('--min', type=float, required=False)
+    parser.add_argument('code', type=str)
     args = parser.parse_args()
 
     url = sdk.get_config("url")
+    url = url.format(code=args.code)
+    resp = requests.get(url)
+    data = resp.text.split("~")
+    if len(data) <= 3:
+        raise RuntimeError('query stock failed')
 
-    def query_stock(url, codes):
-        stock_map = dict()
-        for code in codes:
-            url = url.format(code=code)
-            resp = requests.get(url)
-            data = resp.text.split("~")
-            if len(data) > 3:
-                stock_map[code] = data[3]
-        return stock_map
-
-    if args.alert == 'email_alert':
-        smtp_server = sdk.get_config('smtp_server')
-        smtp_port = sdk.get_config('smtp_port')
-        smtp_user = sdk.get_config('smtp_user')
-        smtp_password = sdk.get_config('smtp_password')
-        from_name = sdk.get_config('from_name')
-        code_map: dict = sdk.get_config('codes')
-        subject = '实时股价'
-
-        body = ''
-        stock_map = query_stock(url, code_map.keys())
-        for code, price in stock_map.items():
-            if Decimal(price) > Decimal(code_map[code]):
-                body += f'{code}: {price}\n'
-        if body != '':
-            sdk.send_email(smtp_server=smtp_server, smtp_port=smtp_port, smtp_user=smtp_user,
-                           smtp_password=smtp_password, from_name=from_name, subject=subject,
-                           body=body, to_emails=args.to)
-
-    elif args.alert == 'query':
-        print(query_stock(url, args.codes))
+    price = data[3]
+    if args.min is None or Decimal(price) > Decimal(args.min):
+        print(f"{args.code}: {price}")
 
 
 if __name__ == "__main__":
