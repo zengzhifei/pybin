@@ -31,7 +31,7 @@ import requests as requests
 
 import sdk
 from __about__ import __version__, __author__
-from ann import RuntimeEnv, runtime
+from ann import RuntimeEnv, runtime, RuntimeKey, RuntimeMode
 
 
 def pybin():
@@ -273,6 +273,24 @@ def goinstance():
 
     cmd = f"ssh --matrix {instance}"
     print(cmd)
+
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def pydebug():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("cmds", type=str, nargs="+")
+    args = parser.parse_args()
+
+    run_mode = os.getenv(RuntimeKey.MODE.value)
+    cmds = [
+        f'export {RuntimeKey.MODE.value}={RuntimeMode.DEBUG.value}',
+        f'{" ".join(shlex.quote(cmd) for cmd in args.cmds)}',
+        f'export {RuntimeKey.MODE.value}={run_mode}',
+    ]
+
+    print("\n".join(cmds))
 
     sys.exit(250)
 
