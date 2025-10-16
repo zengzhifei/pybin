@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import ast
 import cgi
 import glob
 import html
@@ -679,6 +680,33 @@ def mod():
     for line in sys.stdin:
         divisor = int(line.strip())
         print(divisor % args.dividend)
+
+
+def hashcode():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('text', type=str)
+    args = parser.parse_args()
+
+    h = 0
+    for ch in args.text:
+        h = (31 * h + ord(ch)) & 0xFFFFFFFF
+    if h >= 0x80000000:
+        h -= 0x100000000
+
+    print(h)
+
+
+def mabs():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("number", type=sdk.ArgParseType.number, nargs="?")
+    args = parser.parse_args()
+
+    if args.number is not None:
+        number = args.number
+    else:
+        number = ast.literal_eval(sys.stdin.read().strip())
+
+    print(abs(number))
 
 
 def repeatfill():

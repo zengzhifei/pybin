@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import argparse
+import ast
 import hashlib
 import importlib
 import inspect
@@ -598,6 +600,19 @@ def get_module_funcs(py_path: str) -> dict:
         funcs_map[env] = functions
 
     return funcs_map
+
+
+class ArgParseType:
+    @staticmethod
+    def number(value: str):
+        value = value.strip()
+        try:
+            val = ast.literal_eval(value)
+            if isinstance(val, (int, float)):
+                return val
+            raise ValueError
+        except Exception:
+            raise argparse.ArgumentTypeError(f"invalid number value: {value!r}")
 
 
 def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
