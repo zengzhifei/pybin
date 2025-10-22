@@ -1,6 +1,6 @@
 # pybin
 
-linux和mac上一些常用工具命令。
+提供linux和mac上一些常用运维工具命令和开发SDK。
 
 ## 安装教程
 
@@ -17,7 +17,7 @@ cd pybin
 ```
 
 2. **安装环境**
-> <small>_首次安装先使用pip或pip3安装环境依赖，重装可省略_</small>
+> <small>_首次安装先使用pip或pip3安装环境依赖，重新安装可省略_</small>
 ```sh
 pip3 install -r requirements.txt
 ```
@@ -26,7 +26,7 @@ pip3 install -r requirements.txt
 pip3 install --user -r requirements.txt
 ```
 
-> <small>_如果部分依赖无法安装，可尝试创建或更新~/.pip/pip.conf文件，添加以下镜像源，_</small>
+> <small>_如果部分依赖无法安装，可尝试创建或更新~/.pip/pip.conf文件，添加镜像源，如：_</small>
 ```
 [global]
 index-url = https://pypi.tuna.tsinghua.edu.cn/simple
@@ -38,7 +38,7 @@ python3 install.py
 ```
 
 ### 更新步骤
-1. **更新代码**
+1. **拉取最新代码**
 ```sh
 cd pybin
 git pull
@@ -48,4 +48,13 @@ git pull
 ```sh
 python3 install.py
 ```
+或
+```sh
+pybin -i
+```
 
+### 查看更多
+><small>_查看作者信息，工具版本，提供命令等内容，可执行如下命令:_</small>
+```sh
+pybin --help
+```
