@@ -1,4 +1,12 @@
 {
+  "pybin": {
+    "default_rc": {
+      "rm": "alias rm='saferm'",
+      "s": "alias s='scd'",
+      "ll": "alias ll='ls -l'",
+      "jsa": "alias jsa='javaserver --status all'"
+    }
+  },
   "istock": {
     "url": "http://qt.gtimg.cn/q={code}"
   }

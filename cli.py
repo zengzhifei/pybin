@@ -29,6 +29,7 @@ import humanize
 import pandas as pd
 import psutil as psutil
 import requests as requests
+from tabulate import tabulate
 
 import sdk
 from __about__ import __version__, __author__
@@ -37,11 +38,13 @@ from ann import RuntimeEnv, runtime, RuntimeKey, RuntimeMode
 
 def pybin():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-v", "--version", action="store_true", help="show version")
-    parser.add_argument("-a", "--author", action="store_true", help="show author")
-    parser.add_argument("-f", "--function", action="store_true", help="show function")
-    parser.add_argument("-i", "--install", "--update", action="store_true", help="install or update pybin")
-    parser.add_argument("-c", "--config", type=str, nargs="+", help="show config")
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-v", "--version", action="store_true", help="show version")
+    group.add_argument("-u", "--author", action="store_true", help="show author")
+    group.add_argument("-f", "--function", action="store_true", help="show function")
+    group.add_argument("-i", "--install", "--update", action="store_true", help="install or update pybin")
+    group.add_argument("-c", "--config", type=str, nargs="+", help="show config")
+    group.add_argument("-r", "--rc", action="store_true", help="show rc config")
     args = parser.parse_args()
 
     if args.install:
@@ -60,6 +63,21 @@ def pybin():
             print(sdk.format_json(config))
         else:
             print(config)
+        return
+
+    if args.rc:
+        rcs = sdk.get_config('default_rc', default_value={})
+        sdk.merge_two_levels_dict(rcs, sdk.get_config('rc', default_value={}))
+        py_rc = os.path.join(os.environ.get("PYBIN_RUNTIME_PATH"), "pybinrc")
+        configured_rc = sdk.read_file(py_rc)
+
+        rows = []
+        for rc_name, rc_value in rcs.items():
+            if rc_value + "\n" in configured_rc:
+                rows.append(["installed", rc_name, rc_value])
+            else:
+                rows.append(["uninstalled", rc_name, rc_value])
+        print(tabulate(rows, headers=["install status", "rc name", "rc value"], tablefmt="pretty"))
         return
 
     if args.version:

@@ -179,7 +179,7 @@ def upload_file_with_curl(url: str, file_path: str) -> AnyStr:
     return run_popen(curl_command, consumer=consumer)
 
 
-def get_config(key: str, is_caller: bool = True, config_file: str = None) -> Any:
+def get_config(key: str, is_caller: bool = True, config_file: str = None, default_value: Any = None) -> Any:
     if config_file is None:
         runtime_path = os.environ.get("PYBIN_RUNTIME_PATH")
         config_file = os.path.join(runtime_path, "config.json")
@@ -195,13 +195,19 @@ def get_config(key: str, is_caller: bool = True, config_file: str = None) -> Any
         caller_name = caller_frame.function
         item: Dict = config.get(caller_name)
         if item is None:
-            raise KeyError(f"{caller_name} not configured")
+            if default_value is not None:
+                return default_value
+            else:
+                raise KeyError(f"{caller_name} not configured")
     else:
         item = config
 
     value = item.get(key)
     if value is None:
-        raise KeyError(f"{key} not configured")
+        if default_value is not None:
+            return default_value
+        else:
+            raise KeyError(f"{key} not configured")
 
     return value
 

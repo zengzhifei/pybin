@@ -9,16 +9,6 @@ import textwrap
 from pathlib import Path
 
 
-def get_alias_config():
-    return {
-        'rm': 'alias rm="saferm"',
-        's': 'alias s="scd"',
-        'll': 'alias ll="ls -l"',
-        'jsa': 'alias jsa="javaserver --status all"',
-        'gt': 'alias gt="git status"'
-    }
-
-
 def pre_version_check():
     min_version = (3, 6, 0)
     if sys.version_info < min_version:
@@ -132,27 +122,25 @@ def install_bin(args):
     sdk.write_file_content(str(root_path.joinpath("cli.sh")), textwrap.dedent(shell_content))
     os.chmod(root_path.joinpath("cli.sh"), mode=mode)
 
+    py_rc = root_path.joinpath("pybinrc")
+    rcs = config.get('pybin', {}).get('default_rc', {})
+    sdk.merge_two_levels_dict(rcs, config.get('pybin', {}).get('rc', {}))
+    if args.disable_rc is not None:
+        for rc_name in list(set(args.disable_rc)):
+            del rcs[rc_name]
+    py_rc_config = [line + '\n' for line in rcs.values()]
+    sdk.write_file(str(py_rc), py_rc_config)
+
     py_profile = root_path.joinpath("pybin_profile")
     py_config = [
+        f'source {root_path.joinpath("pybinrc")}',
         f'source {root_path.joinpath("cli.sh")}',
         f'export PATH="{root_path}:$PATH"',
         f'export PYBIN_CLIS="{installed_clis}"',
         f'export PYBIN_RUNTIME_PATH="{root_path}"',
         f'export PYBIN_SOURCE_PATH="{current_path}"'
     ]
-
-    alias_config = get_alias_config()
-    if args.disable_alias is not None:
-        if len(args.disable_alias) == 0:
-            alias_config = {}
-        else:
-            for name in list(set(args.disable_alias)):
-                del alias_config[name]
-
-    py_config += list(alias_config.values())
-
     py_config = [line + '\n' for line in py_config]
-
     sdk.write_file(str(py_profile), py_config)
 
     config = sdk.get_sh_profiles()[0]
@@ -170,11 +158,9 @@ def install_site_packages(args):
 
 
 def install():
-    alias_config = get_alias_config()
-
     parser = argparse.ArgumentParser(description="pybin installation program, you can define additional "
                                                  "configuration file: $HOME/.pybin_config.json")
-    parser.add_argument("--disable-alias", choices=list(alias_config.keys()), nargs="*", help="disable choices alias")
+    parser.add_argument("--disable-rc", type=str, nargs="+", help="disable rc config")
     parser.add_argument("--ignore-error", action="store_true", help="ignore install requirements error")
     args = parser.parse_args()
 
