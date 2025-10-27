@@ -1569,14 +1569,11 @@ def table2md():
     else:
         lines = sys.stdin.read().splitlines()
 
-    columns = lines[0].split('\t')
-    table = '| ' + ' | '.join(['' for _ in columns]) + ' |\n'
-    table += '| ' + ' | '.join(['---' for _ in columns]) + ' |\n'
-    for line in lines:
-        rows = line.split('\t')
-        table += '| ' + ' | '.join(map(str, rows)) + ' |\n'
-
-    print(table)
+    headers = lines[0].split('\t')
+    rows = []
+    for line in lines[1:]:
+        rows.append(line.split('\t'))
+    print(tabulate(rows, headers=headers, tablefmt="github"))
 
 
 def istock():
