@@ -314,6 +314,17 @@ def pydebug():
     sys.exit(250)
 
 
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def deep_find_app():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('app', type=str)
+    args = parser.parse_args()
+
+    cmd = f'find ~/Library -type d -iname "*{args.app}*" 2>/dev/null'
+    print(cmd)
+    sys.exit(250)
+
+
 def goes():
     parser = argparse.ArgumentParser()
     parser.add_argument('--raw', action='store_true')
