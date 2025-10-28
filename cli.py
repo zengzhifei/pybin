@@ -320,7 +320,7 @@ def deep_find_app():
     parser.add_argument('app', type=str)
     args = parser.parse_args()
 
-    cmd = f'find ~/Library -type d -iname "*{args.app}*" 2>/dev/null'
+    cmd = f'find ~/Library -type d -iname "*{args.app}*" 2>/dev/null | sed "s/ /\\ /g"'
     print(cmd)
     sys.exit(250)
 
