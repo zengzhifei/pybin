@@ -1293,7 +1293,8 @@ def file_deploy_server():
                 os.remove(filepath)
 
             if args.cmd:
-                process = sdk.run_shell(args.cmd)
+                cmd = f"cd {file_home}; {args.cmd}"
+                process = sdk.run_shell(cmd)
                 handler.ok(process.stdout)
             else:
                 handler.ok("success.")
