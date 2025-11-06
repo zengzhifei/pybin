@@ -1047,6 +1047,85 @@ def http_file_server():
     http_server.start(daemon=args.daemon)
 
 
+def goserver():
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--restart", action="store_true", help="restart server")
+    group.add_argument("--stop", action="store_true", help="stop server")
+    group.add_argument("--status", action="store_true", help="show server status")
+    group.add_argument("--config", action="store_true", help="show server config")
+    parser.add_argument("-l", "--log", action="store_true", help="extra log in javaserver log")
+    parser.add_argument("-d", "--daemon", action="store_true", help="run server in daemon")
+    parser.add_argument("app", type=str, help="bin or go code source file or all")
+    args = parser.parse_args()
+
+    app: str = args.app
+
+    if args.restart:
+        if not os.path.exists(app):
+            raise FileNotFoundError(f"{app} not found")
+        if not (os.path.isfile(app) and os.access(app, os.X_OK)) and not (app.endswith(".go")):
+            raise FileNotFoundError(f"{app} not an executable program or go source code file.")
+
+        target_file = os.path.basename(app)
+        if app.endswith(".go"):
+            project_dir, bin_name = sdk.get_path_parent_by_level(app, 1)
+            os.chdir(project_dir)
+            bin_name = f"{bin_name}_launcher_goserver"
+            build_cmd = f"mkdir -p bin && go build -o ./bin/{bin_name} {target_file}"
+            sdk.run_shell(build_cmd)
+            run_cmd = f"./bin/{bin_name}"
+        else:
+            _, bin_dir = sdk.get_path_parent_by_level(app, 1)
+            project_dir, bin_name = sdk.get_path_parent_by_level(app, 2)
+            os.chdir(project_dir)
+            run_cmd = f"./{bin_dir}/{target_file}"
+
+        sdk.iterate_process(condition=lambda process_name: ('_launcher_goserver' in process_name)
+                                                           and (bin_name.lower() in process_name),
+                            callback=lambda process_name, proc: proc.kill())
+
+        if args.daemon:
+            run_cmd = f"{run_cmd} >/dev/null 2>&1 &"
+        sdk.run_shell(run_cmd)
+        print(run_cmd)
+        return
+
+    if args.stop:
+        if app.lower() == "all":
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name),
+                                callback=lambda process_name, proc: proc.kill())
+        else:
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name)
+                                                               and (app.lower() in process_name),
+                                callback=lambda process_name, proc: proc.kill())
+        return
+
+    if args.status:
+        def print_server_info(process_name, proc: psutil.Process):
+            ports = sdk.get_process_listen_ports(proc.pid)
+            print(f"server({process_name}) run pid: {proc.pid}, run port: {ports}")
+
+        if app.lower() == "all":
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name),
+                                callback=print_server_info)
+        else:
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name)
+                                                               and (app.lower() in process_name),
+                                callback=print_server_info)
+        return
+
+    if args.config:
+        if app.lower() == "all":
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name),
+                                callback=lambda process_name, proc: print(process_name))
+        else:
+            sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name)
+                                                               and (app.lower() in process_name),
+                                callback=lambda process_name, proc: print(process_name))
+        return
+
+
 def javaserver():
     parser = argparse.ArgumentParser()
     parser.add_argument("--restart", action="store_true", help="restart server")
@@ -1267,6 +1346,7 @@ def file_deploy_server():
     parser.add_argument("--dir", type=str, required=True, help="file to save directory")
     parser.add_argument("--dec", action="store_true", help="need to decompress?")
     parser.add_argument("--cmd", type=str, required=False, help="if succeed command to run")
+    parser.add_argument("--flag", type=str, required=False, help="server flag", default="")
     args = parser.parse_args()
 
     def post_method(handler):
@@ -1293,7 +1373,7 @@ def file_deploy_server():
                 os.remove(filepath)
 
             if args.cmd:
-                cmd = f"cd {file_home}; {args.cmd}"
+                cmd = f"{args.cmd}".replace("{}", f"{file_home}")
                 process = sdk.run_shell(cmd)
                 handler.ok(process.stdout)
             else:
@@ -1304,7 +1384,11 @@ def file_deploy_server():
     if not os.path.exists(args.dir):
         raise RuntimeError(f"{args.dir} is not exists")
 
-    http_server = sdk.HttpServer(port=args.port, name=f"FileDeployServer:{args.port}")
+    if args.flag:
+        server_name = f"FileDeployServer:{args.port}:{args.flag}"
+    else:
+        server_name = f"FileDeployServer:{args.port}"
+    http_server = sdk.HttpServer(port=args.port, name=f"{server_name}")
     http_server.set_post_method(method=post_method)
     http_server.start(daemon=args.daemon)
 

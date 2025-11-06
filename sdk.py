@@ -26,7 +26,7 @@ from email.utils import formataddr
 from http.server import HTTPServer, BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from subprocess import Popen
-from typing import Type, AnyStr, List, Any, Dict, Optional, Callable
+from typing import Type, AnyStr, List, Any, Dict, Optional, Callable, Tuple
 
 import psutil
 import requests
@@ -608,17 +608,13 @@ def get_module_funcs(py_path: str) -> dict:
     return funcs_map
 
 
-class ArgParseType:
-    @staticmethod
-    def number(value: str):
-        value = value.strip()
-        try:
-            val = ast.literal_eval(value)
-            if isinstance(val, (int, float)):
-                return val
-            raise ValueError
-        except Exception:
-            raise argparse.ArgumentTypeError(f"invalid number value: {value!r}")
+def get_path_parent_by_level(path: str, level: int) -> Tuple[Optional[str], Optional[str]]:
+    p = Path(path)
+    for _ in range(level):
+        p = p.parent
+        if p == p.parent:
+            return None, None
+    return str(p), p.name
 
 
 def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
@@ -644,6 +640,19 @@ def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
         raise RuntimeError(f"Unknown command: {func_name}")
 
     funcs_map[func_name]()
+
+
+class ArgParseType:
+    @staticmethod
+    def number(value: str):
+        value = value.strip()
+        try:
+            val = ast.literal_eval(value)
+            if isinstance(val, (int, float)):
+                return val
+            raise ValueError
+        except Exception:
+            raise argparse.ArgumentTypeError(f"invalid number value: {value!r}")
 
 
 class HttpServer:

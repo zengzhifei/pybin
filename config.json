@@ -4,7 +4,8 @@
       "rm": "alias rm='saferm'",
       "s": "alias s='scd'",
       "ll": "alias ll='ls -l'",
-      "jsa": "alias jsa='javaserver --status all'"
+      "jsa": "alias jsa='javaserver --status all'",
+      "gsa": "alias gsa='goserver --status all'"
     }
   },
   "istock": {
