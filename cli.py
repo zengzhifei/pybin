@@ -1054,7 +1054,8 @@ def goserver():
     group.add_argument("--stop", action="store_true", help="stop server")
     group.add_argument("--status", action="store_true", help="show server status")
     group.add_argument("--config", action="store_true", help="show server config")
-    parser.add_argument("-l", "--log", action="store_true", help="extra log in javaserver log")
+    parser.add_argument("-P", "--debug", action="store_true", help="run server in debug mode")
+    parser.add_argument("-l", "--log", action="store_true", help="extra log in goserver log")
     parser.add_argument("-d", "--daemon", action="store_true", help="run server in daemon")
     parser.add_argument("app", type=str, help="bin or go code source file or all")
     args = parser.parse_args()
@@ -1084,6 +1085,9 @@ def goserver():
         sdk.iterate_process(condition=lambda process_name: ('_launcher_goserver' in process_name)
                                                            and (bin_name.lower() in process_name),
                             callback=lambda process_name, proc: proc.kill())
+        if args.debug:
+            debug_port = sdk.find_available_port(8100, 8200)
+            run_cmd = f"dlv --continue --listen=:{debug_port} --headless=true --api-version=2 --accept-multiclient exec {run_cmd}"
 
         if args.daemon:
             run_cmd = f"{run_cmd} >/dev/null 2>&1 &"
@@ -1345,8 +1349,8 @@ def file_deploy_server():
     parser.add_argument("-d", "--daemon", action="store_true")
     parser.add_argument("--dir", type=str, required=True, help="file to save directory")
     parser.add_argument("--dec", action="store_true", help="need to decompress?")
-    parser.add_argument("--cmd", type=str, required=False, help="if succeed command to run")
     parser.add_argument("--flag", type=str, required=False, help="server flag", default="")
+    parser.add_argument("--cmd", type=str, required=False, help="if succeed command to run")
     args = parser.parse_args()
 
     def post_method(handler):
