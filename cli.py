@@ -1073,7 +1073,7 @@ def goserver():
             project_dir, bin_name = sdk.get_path_parent_by_level(app, 1)
             os.chdir(project_dir)
             bin_name = f"{bin_name}_launcher_goserver"
-            build_cmd = f"mkdir -p bin && go build -o ./bin/{bin_name} {target_file}"
+            build_cmd = f'mkdir -p bin && go build -gcflags "all=-N -l" -o ./bin/{bin_name} {target_file}'
             sdk.run_shell(build_cmd)
             run_cmd = f"./bin/{bin_name}"
         else:
