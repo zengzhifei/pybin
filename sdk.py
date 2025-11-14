@@ -158,8 +158,11 @@ def upload_file(url: str, file_path: str) -> Response:
     return response
 
 
-def upload_file_with_curl(url: str, file_path: str) -> AnyStr:
-    curl_command = ['curl', '-F', f'file=@{file_path}', url]
+def upload_file_with_curl(url: str, file_path: str, params: List[str] = None) -> AnyStr:
+    curl_command = ['curl', '-F', f'file=@{file_path}']
+    if params:
+        curl_command += [elem for param in params for elem in ('-F', param)]
+    curl_command.append(url)
 
     def consumer(process):
         line = 0
@@ -719,6 +722,8 @@ class HttpServer:
                         self.http_server.get_method(self)
                     except Exception as e:
                         self.error(f"{e}")
+                else:
+                    self.ok("hello GET by default")
 
             def do_POST(self):
                 if self.http_server.post_method is not None:
@@ -726,6 +731,8 @@ class HttpServer:
                         self.http_server.post_method(self)
                     except Exception as e:
                         self.error(f"{e}")
+                else:
+                    self.ok("hello POST by default")
 
             def ok(self, response: str):
                 self.send_response(200)
