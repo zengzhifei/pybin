@@ -22,12 +22,14 @@ from decimal import Decimal
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
+from typing import Optional, TextIO
 from urllib.parse import urlparse
 
 import humanize
 import pandas as pd
 import psutil as psutil
 import requests as requests
+from inotify_simple import INotify, flags
 from tabulate import tabulate
 
 import sdk
@@ -1629,6 +1631,64 @@ def istock():
     price = data[3]
     if args.min is None or Decimal(price) > Decimal(args.min):
         print(f"{args.code}: {price}")
+
+
+def tail_f():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('file', type=str)
+    args = parser.parse_args()
+
+    file_path = os.path.abspath(args.file)
+    file_name = os.path.basename(file_path)
+    file_dir = os.path.dirname(file_path)
+
+    inotify = INotify()
+    wd_dir = None
+    f: Optional[TextIO] = None
+
+    def open_file():
+        nonlocal f
+        try:
+            f = open(file_path, "r", encoding="utf-8")
+            f.seek(0, os.SEEK_END)
+            print(f"the file has been created: {file_path}\n")
+        except FileNotFoundError:
+            f = None
+
+    def watch_dir():
+        nonlocal wd_dir
+        try:
+            wd_dir = inotify.add_watch(file_dir, flags.CREATE | flags.DELETE | flags.MOVED_TO | flags.MOVED_FROM)
+        except FileNotFoundError:
+            wd_dir = None
+
+    watch_dir()
+    open_file()
+
+    while True:
+        if wd_dir is None or not os.path.exists(file_dir):
+            while not os.path.exists(file_dir):
+                time.sleep(0.5)
+            watch_dir()
+
+        if f is None:
+            open_file()
+
+        if f:
+            line = f.readline()
+            while line:
+                print(line, end="")
+                line = f.readline()
+
+        for e in inotify.read(timeout=100):
+            if e.name == file_name and e.mask & (flags.CREATE | flags.MOVED_TO):
+                open_file()
+            if e.name == file_name and e.mask & (flags.DELETE | flags.MOVED_FROM) and f:
+                f.close()
+                f = None
+                print(f"\nthe file has been deleted: {file_path}")
+
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
