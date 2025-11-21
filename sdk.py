@@ -8,6 +8,7 @@ import ipaddress
 import json
 import logging
 import os
+import pty
 import re
 import shutil
 import smtplib
@@ -369,6 +370,31 @@ def run_shell(cmd: str) -> subprocess.CompletedProcess:
         raise RuntimeError(process.stderr)
     else:
         return process
+
+
+def run_shell_tty(cmd: str) -> subprocess.CompletedProcess:
+    master_fd, slave_fd = pty.openpty()
+    try:
+        process = subprocess.Popen(cmd, shell=True, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+                                   universal_newlines=True)
+        os.close(slave_fd)
+
+        output = ""
+        while True:
+            try:
+                data = os.read(master_fd, 1024)
+                if not data:
+                    break
+                output += data.decode("utf-8", errors="replace")
+            except OSError:
+                break
+
+        process.wait()
+        if process.returncode != 0:
+            raise RuntimeError(output)
+        return subprocess.CompletedProcess(args=cmd, returncode=process.returncode, stdout=output, stderr="")
+    finally:
+        os.close(master_fd)
 
 
 def run_cmd(cmd: List[str]) -> subprocess.CompletedProcess:
