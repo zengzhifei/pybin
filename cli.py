@@ -46,6 +46,7 @@ def pybin():
     group.add_argument("-i", "--install", "--update", action="store_true", help="install or update pybin")
     group.add_argument("-c", "--config", type=str, nargs="+", help="show config")
     group.add_argument("-r", "--rc", action="store_true", help="show rc config")
+    group.add_argument("--history", action="store_true", help="show cmd run history")
     args = parser.parse_args()
 
     if args.install:
@@ -87,6 +88,10 @@ def pybin():
 
     if args.author:
         print(__author__)
+        return
+
+    if args.history:
+        print(sdk.read_file_content(os.path.join(sdk.get_home(), ".pybin_history")))
         return
 
     clis = os.environ.get("PYBIN_CLIS").split("|")
@@ -1318,7 +1323,7 @@ def file_deploy_server():
                 cmd = f"{cmd}".replace("{FILE_PATH}", f"{file_path}")
                 cmd = f"{cmd}".replace("{FILE_NAME}", f"{file_name}")
                 cmd = f"{cmd} {' '.join(params)}"
-                process = sdk.run_shell(cmd)
+                process = sdk.run_bash(cmd)
                 handler.ok(process.stdout)
             else:
                 handler.ok("success.")

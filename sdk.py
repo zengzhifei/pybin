@@ -10,6 +10,7 @@ import logging
 import os
 import pty
 import re
+import shlex
 import shutil
 import smtplib
 import socket
@@ -363,9 +364,13 @@ def find_available_port(start_port: int, end_port: int) -> int:
     raise OSError(f"not find available port in range {start_port} - {end_port}")
 
 
+def run_bash(cmd: str) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          universal_newlines=True)
+
+
 def run_shell(cmd: str) -> subprocess.CompletedProcess:
-    process = subprocess.run(cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             universal_newlines=True)
+    process = run_bash(cmd)
     if process.returncode != 0:
         raise RuntimeError(process.stderr)
     else:
@@ -667,6 +672,9 @@ def run_main(runtime_mode: RuntimeMode = RuntimeMode.PRODUCT) -> None:
     funcs_map = {k: v for functions in get_module_funcs(cli).values() for k, v in functions.items()}
     if func_name not in funcs_map:
         raise RuntimeError(f"Unknown command: {func_name}")
+
+    cmd = " ".join(shlex.quote(arg) for arg in sys.argv)
+    write_file_content_by_append(os.path.join(get_home(), ".pybin_history"), cmd + "\n")
 
     funcs_map[func_name]()
 
