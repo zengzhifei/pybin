@@ -282,7 +282,7 @@ def is_ip(ip: str) -> bool:
         return False
 
 
-def parse_bns(bns: str) -> List[dict]:
+def parse_bns(bns: str, only_working: bool = True) -> List[dict]:
     process = run_cmd(['get_instance_by_service', '-a', bns])
     if process.stdout is None or not process.stdout:
         raise RuntimeError(f"{bns} get_instance_by_service fail, maybe is invalid")
@@ -295,14 +295,19 @@ def parse_bns(bns: str) -> List[dict]:
             continue
 
         cols = service.split(' ')
+        if only_working and int(cols[4]) != 0:
+            continue
 
         tags = cols[7]
-        tags_map = dict(pair.split(':', 1) for pair in tags.split(','))
+        tags_map = dict(pair.split(':', 1) for pair in tags.split(',')) if tags else {}
 
         tags_map['machine'] = cols[0]
         tags_map['ip'] = cols[1]
         tags_map['group'] = cols[2]
         tags_map['port'] = cols[3]
+        tags_map['status'] = cols[4]
+        tags_map['load'] = cols[5]
+        tags_map['offset'] = cols[6]
         tags_map['instance'] = '.'.join(cols[8].split('.', 4)[:4])
         tags_map['namespace'] = cols[9]
         tags_map['workspace'] = cols[10]
