@@ -1262,7 +1262,8 @@ def http_file_server():
     else:
         os.chdir(args.dir)
 
-    http_server = sdk.HttpServer(port=args.port, name=f"HttpFileServer:{args.port}")
+    flag = os.path.basename(os.path.realpath(args.dir))
+    http_server = sdk.HttpServer(port=args.port, name=f"HttpFileServer:{args.port}:{flag}")
     http_server.set_request_handler_class(HttpFileRequestHandler)
     http_server.use_threading_http_server(True)
     http_server.start(daemon=args.daemon)
