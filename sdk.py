@@ -207,6 +207,9 @@ def get_config(key: str, is_caller: bool = True, config_file: str = None, defaul
     else:
         item = config
 
+    if key is None:
+        return item
+
     value = item.get(key)
     if value is None:
         if default_value is not None:

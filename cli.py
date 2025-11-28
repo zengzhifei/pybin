@@ -22,7 +22,7 @@ from decimal import Decimal
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import Optional, TextIO, cast
 from urllib.parse import urlparse
 
 import humanize
@@ -221,7 +221,7 @@ def java_decompiler():
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def gomysql():
     parser = argparse.ArgumentParser()
-    parser.add_argument("tag", type=str)
+    parser.add_argument("tag", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
     parser.add_argument("cmds", type=str, nargs="*")
     args = parser.parse_args()
 
@@ -240,7 +240,7 @@ def gomysql():
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def goredis():
     parser = argparse.ArgumentParser()
-    parser.add_argument("tag", type=str)
+    parser.add_argument("tag", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
     parser.add_argument("cmds", type=str, nargs="*")
     args = parser.parse_args()
 
@@ -335,7 +335,7 @@ def goes():
     parser = argparse.ArgumentParser()
     parser.add_argument('--raw', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument("tag", type=str)
+    parser.add_argument("tag", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
     parser.add_argument('sql', type=str, nargs="?")
     args = parser.parse_args()
 
@@ -547,7 +547,7 @@ def cleartrash():
 
 def runcmd():
     parser = argparse.ArgumentParser()
-    parser.add_argument("name", type=str)
+    parser.add_argument("name", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
     parser.add_argument("params", type=str, nargs="*")
     args = parser.parse_args()
 
