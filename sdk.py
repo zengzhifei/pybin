@@ -913,3 +913,56 @@ class Sql2EsConverter:
             dsl['bool'][clause].append({'nested': {'path': key, 'query': {'bool': {clause: values}}}})
 
         return dsl
+
+
+class TransactionalReplacer:
+    def __init__(self, rule_file: str):
+        self._rule_path = Path(rule_file)
+        self._rules = {}
+        self._backup = {}
+        self._active = False
+
+        if not self._rule_path.exists():
+            return
+
+        with self._rule_path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if not isinstance(data, dict):
+                raise ValueError("replace.json must be a mapping")
+            self._rules = data
+
+    def _apply(self):
+        if self._active or not self._rules:
+            return
+
+        for file in self._rules:
+            path = Path(file).resolve()
+            self._backup[path] = path.read_text(encoding="utf-8")
+
+        for file, mapping in self._rules.items():
+            path = Path(file).resolve()
+            content = self._backup[path]
+
+            for src, dst in mapping.items():
+                content = content.replace(str(src), str(dst))
+
+            path.write_text(content, encoding="utf-8")
+
+        self._active = True
+
+    def _restore(self):
+        if not self._active:
+            return
+
+        for path, content in self._backup.items():
+            path.write_text(content, encoding="utf-8")
+
+        self._backup.clear()
+        self._active = False
+
+    def __enter__(self):
+        self._apply()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._restore()

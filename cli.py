@@ -1375,13 +1375,7 @@ def file_deploy():
             raise RuntimeError(f"{args.file} is not exists")
         file = args.file
     else:
-        modify_list = []
-        if os.path.exists(".pybin_file_deploy.json"):
-            modify_list = sdk.read_json_file(".pybin_file_deploy.json")
-            for modification in modify_list:
-                sdk.modify_file(modification["file"], modification["old_text"], modification["new_text"])
-
-        try:
+        with sdk.TransactionalReplacer(".pybin_file_deploy.json"):
             project = os.path.basename(os.getcwd())
             file = f'{project}.tar.gz'
             tar_command = f'tar --no-mac-metadata -czf {file} *'
@@ -1391,10 +1385,6 @@ def file_deploy():
                 print("file has been successfully packed.")
             else:
                 raise RuntimeError("packets has failed.")
-        finally:
-            if modify_list:
-                for modification in modify_list:
-                    sdk.modify_file(modification["file"], modification["new_text"], modification["old_text"])
 
     try:
         print(f"ready to deploy file: {file}...", end="\n\n")
