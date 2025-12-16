@@ -866,6 +866,7 @@ def goserver():
     group.add_argument("--stop", action="store_true", help="stop server")
     group.add_argument("--status", action="store_true", help="show server status")
     group.add_argument("--config", action="store_true", help="show server config")
+    group.add_argument("--reload", action="store_true", help="reload server")
     parser.add_argument("-P", "--debug", action="store_true", help="run server in debug mode")
     parser.add_argument("-l", "--log", action="store_true", help="extra log in goserver log")
     parser.add_argument("-d", "--daemon", action="store_true", help="run server in daemon")
@@ -904,6 +905,7 @@ def goserver():
         if args.daemon:
             run_cmd = f"{run_cmd} >/dev/null 2>&1 &"
         sdk.run_shell(run_cmd)
+        sdk.write_file_content(".goserver.runcmd", run_cmd)
         print(run_cmd)
         return
 
@@ -939,6 +941,25 @@ def goserver():
             sdk.iterate_process(condition=lambda process_name: ('launcher_goserver' in process_name)
                                                                and (app.lower() in process_name),
                                 callback=lambda process_name, proc: print(process_name))
+        return
+
+    if args.reload:
+        if not os.path.exists(app):
+            raise FileNotFoundError(f"{app} not found")
+        if not (os.path.isfile(app) and os.access(app, os.X_OK)):
+            raise FileNotFoundError(f"{app} not an executable program.")
+
+        _, bin_dir = sdk.get_path_parent_by_level(app, 1)
+        project_dir, bin_name = sdk.get_path_parent_by_level(app, 2)
+        os.chdir(project_dir)
+
+        sdk.iterate_process(condition=lambda process_name: ('_launcher_goserver' in process_name)
+                                                           and (bin_name.lower() in process_name),
+                            callback=lambda process_name, proc: proc.kill())
+
+        reload_cmd = sdk.read_file_content(".goserver.runcmd")
+        sdk.run_shell(reload_cmd)
+        print(reload_cmd)
         return
 
 
