@@ -944,6 +944,8 @@ class TransactionalReplacer:
             content = self._backup[path]
 
             for src, dst in mapping.items():
+                if str(src) not in content:
+                    raise RuntimeError(f"TransactionalReplacer not found match: [{str(src)}] in [{file}]")
                 content = content.replace(str(src), str(dst))
 
             path.write_text(content, encoding="utf-8")
