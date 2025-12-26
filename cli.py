@@ -185,7 +185,10 @@ def scd():
         filtered_data = {k: v for k, v in dir_item.items() if dir_basename.lower() in k.lower()}
         if len(filtered_data) == 0:
             return
-        target_dir, target_item = max(filtered_data.items(), key=lambda x: (x[1]['dir_count'], x[1]['dir_time']))
+        target_dir, target_item = max(filtered_data.items(), key=lambda x: (x[0].lower().endswith(dir_basename.lower()),
+                                                                            x[1]['dir_count'],
+                                                                            x[1]['dir_time'])
+                                      )
 
     if target_dir in dir_item:
         item = {'dir_count': dir_item[target_dir]['dir_count'] + 1, 'dir_time': int(time.time())}
