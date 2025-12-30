@@ -651,7 +651,8 @@ def get_module_funcs(py_path: str) -> dict:
 
 
 def get_path_parent_by_level(path: str, level: int) -> Tuple[Optional[str], Optional[str]]:
-    p = Path(path)
+    p = Path(path).absolute()
+
     for _ in range(level):
         p = p.parent
         if p == p.parent:

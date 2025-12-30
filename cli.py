@@ -951,7 +951,6 @@ def goserver():
         if not (os.path.isfile(app) and os.access(app, os.X_OK)):
             raise FileNotFoundError(f"{app} not an executable program.")
 
-        _, bin_dir = sdk.get_path_parent_by_level(app, 1)
         project_dir, bin_name = sdk.get_path_parent_by_level(app, 2)
         os.chdir(project_dir)
 
