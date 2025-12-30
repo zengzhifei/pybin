@@ -117,7 +117,7 @@ def install_bin(args):
         for extend_name, extend_func in extend_shell_funcs.items():
             shell_exit_code = getattr(extend_func, RuntimeKey.EXIT_CODE.value, 0)
             shell_content += template.format(cli_file=new_extend_cli, func_name=extend_name, exit_code=shell_exit_code)
-        installed_clis = installed_clis + "|" + str(root_extend_cli)
+        installed_clis = installed_clis + ";" + str(root_extend_cli)
 
     sdk.write_file_content(str(root_path.joinpath("cli.sh")), textwrap.dedent(shell_content))
     os.chmod(root_path.joinpath("cli.sh"), mode=mode)

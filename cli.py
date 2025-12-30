@@ -82,30 +82,29 @@ def pybin():
         print(tabulate(rows, headers=["install status", "rc name", "rc value"], tablefmt="pretty"))
         return
 
-    if args.version:
-        print(__version__)
-        return
-
-    if args.author:
-        print(__author__)
-        return
-
     if args.history:
         print(sdk.read_file_content(os.path.join(sdk.get_home(), ".pybin_history")))
         return
 
-    clis = os.environ.get("PYBIN_CLIS").split("|")
-    funcs = []
-    for cli in clis:
-        funcs.extend(["  " + k for functions in sdk.get_module_funcs(cli).values() for k, v in functions.items()])
-    functions = "\n".join(sorted(funcs))
-    if args.function:
-        print(functions)
-        return
+    if not args.version and not args.author and not args.function:
+        args.version = args.author = args.function = True
 
-    print(f"version: {__version__}")
-    print(f"author: {__author__}")
-    print(f"function: \n{functions}")
+    headers = []
+    rows = []
+    if args.version:
+        headers.append("version")
+        rows.append(__version__)
+    if args.author:
+        headers.append("author")
+        rows.append(__author__)
+    if args.function:
+        clis = os.environ.get("PYBIN_CLIS").split(";")
+        for cli in clis:
+            headers.append(f"{os.path.basename(cli)}")
+            funcs = [k for functions in sdk.get_module_funcs(cli).values() for k, v in functions.items()]
+            rows.append(tabulate([funcs[i:i + 3] for i in range(0, len(funcs), 3)], tablefmt="plain"))
+
+    print(tabulate([rows], headers=headers, tablefmt="grid", rowalign=None))
 
 
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
