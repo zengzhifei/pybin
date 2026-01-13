@@ -547,6 +547,7 @@ def cleartrash():
         print(f"{file} is removed.")
 
 
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def runcmd():
     parser = argparse.ArgumentParser()
     parser.add_argument("name", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
@@ -573,8 +574,10 @@ def runcmd():
         cmds.append(formatted_string)
 
     cmd = " ".join(cmds)
-    result = sdk.run_shell(cmd)
-    print(result.stdout)
+
+    print(cmd)
+
+    sys.exit(250)
 
 
 def trim():
