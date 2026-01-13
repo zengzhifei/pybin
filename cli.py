@@ -1253,14 +1253,14 @@ def http_file_server():
             r.append('<table width="100%" cellspacing="0" cellpadding="5">')
             for name in dir_list:
                 fullname = os.path.join(path, name)
-                display_name = link_name = name
-                download_name = urllib.parse.quote(link_name) + "?download"
                 if os.path.isdir(fullname):
                     display_name = name + "/"
                     link_name = name + "/"
                     download_name = ""
-                if os.path.islink(fullname):
-                    display_name = name + "@"
+                else:
+                    display_name = name
+                    link_name = name
+                    download_name = urllib.parse.quote(link_name) + "?download"
                 filename = os.getcwd() + '/' + display_path + display_name
                 r.append(f'<tr>'
                          f'<td width="40%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
