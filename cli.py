@@ -1141,8 +1141,14 @@ def http_file_server():
 
         def guess_type(self, path):
             url_parsed = urlparse(self.path)
-            if url_parsed.query.lower() == 'download':
+            params = urllib.parse.parse_qs(url_parsed.query, keep_blank_values=True)
+            if 'download' in params:
                 return 'application/octet-stream'
+            if os.path.isfile(path):
+                _, ext = os.path.splitext(path)
+                ext = ext.lower()
+                if ext in (".go", ".java", ".php", ".py", ".c"):
+                    return 'text/plain; charset=utf-8'
             return super().guess_type(path)
 
         def do_POST(self):
@@ -1256,15 +1262,18 @@ def http_file_server():
                 if os.path.isdir(fullname):
                     display_name = name + "/"
                     link_name = name + "/"
+                    md5 = ""
                     download_name = ""
                 else:
                     display_name = name
                     link_name = name
-                    download_name = urllib.parse.quote(link_name) + "?download"
+                    md5 = sdk.get_file_md5(fullname)
+                    download_name = urllib.parse.quote(link_name) + f"?download&v={md5}"
                 filename = os.getcwd() + '/' + display_path + display_name
                 r.append(f'<tr>'
-                         f'<td width="40%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
+                         f'<td width="20%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
                          f'<td width="20%%"><a href="{download_name}">下载</a></td>'
+                         f'<td width="20%%">{md5}</td>'
                          f'<td width="20%%">{humanize.naturalsize(os.path.getsize(filename))}</td>'
                          f'<td width="20%%">{modification_date(filename)}</td>'
                          f'</tr>')
