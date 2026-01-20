@@ -1249,6 +1249,28 @@ def http_file_server():
             r.append(f'<title>{title}</title>\n</head>')
             r.append(f'<body>\n<h1>{title}</h1>')
             r.append('<hr>')
+            r.append("""
+            <script>
+            function copyText(text) {
+                const quoted = `"${text}"`;
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(quoted).then(function() {
+                        alert("已复制: " + quoted);
+                    }, function(err) {
+                        alert("复制失败");
+                    });
+                } else {
+                    const input = document.createElement("input");
+                    input.value = quoted;
+                    document.body.appendChild(input);
+                    input.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(input);
+                     alert("已复制: " + quoted);
+                }
+            }
+            </script>
+            """)
             r.append('<form ENCTYPE="multipart/form-data" method="post">')
             r.append('<input name="file" type="file"/>')
             r.append('<input type="submit" value="upload"/>')
@@ -1263,20 +1285,28 @@ def http_file_server():
                     display_name = name + "/"
                     link_name = name + "/"
                     md5 = ""
-                    download_name = ""
+                    download_html = "-"
+                    copy_html = "-"
                 else:
                     display_name = name
                     link_name = name
                     md5 = sdk.get_file_md5(fullname)
-                    download_name = urllib.parse.quote(link_name) + f"?download&v={md5}"
+                    download_url = urllib.parse.quote(link_name) + f"?download&v={md5}"
+                    download_html = f'<a href="{download_url}">下载</a>'
+                    scheme = "https" if self.headers.get("X-Forwarded-Proto") == "https" else "http"
+                    copy_download_url = f'{scheme}://{self.headers.get("host")}{self.path}{download_url}'
+                    copy_html = f"<button onclick='copyText({json.dumps(copy_download_url)})'>复制链接</button>"
                 filename = os.getcwd() + '/' + display_path + display_name
-                r.append(f'<tr>'
-                         f'<td width="20%%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>'
-                         f'<td width="20%%"><a href="{download_name}">下载</a></td>'
-                         f'<td width="20%%">{md5}</td>'
-                         f'<td width="20%%">{humanize.naturalsize(os.path.getsize(filename))}</td>'
-                         f'<td width="20%%">{modification_date(filename)}</td>'
-                         f'</tr>')
+                r.append(f'''
+                         <tr>
+                         <td width="20%"><a href="{urllib.parse.quote(link_name)}">{html.escape(display_name)}</a></td>
+                         <td width="15%">{download_html}</td>
+                         <td width="15%">{copy_html}</td>
+                         <td width="20%">{md5 or '-'}</td>
+                         <td width="10%">{humanize.naturalsize(os.path.getsize(filename))}</td>
+                         <td width="20%">{modification_date(filename)}</td>
+                         </tr>
+                ''')
             r.append('</table>')
             r.append('<hr>')
             r.append("</body>")
