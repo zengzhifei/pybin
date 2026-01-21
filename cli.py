@@ -754,6 +754,7 @@ def repeatfill():
     parser.add_argument("--placeholder", type=str, default="{}")
     parser.add_argument("--start", type=int, default=0)
     parser.add_argument("--end", type=int, required=True)
+    parser.add_argument("--align", action="store_true")
     parser.add_argument("text", type=str, nargs="?")
     args = parser.parse_args()
 
@@ -762,8 +763,13 @@ def repeatfill():
     else:
         text = sys.stdin.read()
 
+    width = len(str(args.end - 1))
     for i in range(args.start, args.end):
-        print(text.replace(args.placeholder, str(i)), end="")
+        if args.align:
+            idx = f"{i:0{width}d}"
+        else:
+            idx = str(i)
+        print(text.replace(args.placeholder, idx), end="\n")
 
 
 def securekeeper():
