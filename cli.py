@@ -271,7 +271,7 @@ def goredis():
 @runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
 def gomachine():
     parser = argparse.ArgumentParser()
-    parser.add_argument("machine", type=str)
+    parser.add_argument("machine", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
     args = parser.parse_args()
 
     config: dict = sdk.get_config(args.machine)
