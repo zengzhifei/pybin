@@ -47,7 +47,15 @@ def pybin():
     group.add_argument("-c", "--config", type=str, nargs="+", help="show config")
     group.add_argument("-r", "--rc", action="store_true", help="show rc config")
     group.add_argument("--history", action="store_true", help="show cmd run history")
+    parser.add_argument("--head", type=int, help="show history head")
+    parser.add_argument("--tail", type=int, help="show history tail")
+    parser.add_argument("--grep", type=str, help="show history grep")
     args = parser.parse_args()
+
+    if any([args.head, args.tail, args.grep]) and not args.history:
+        parser.error("--grep/--head/--tail must be used with --history")
+    if args.head is not None and args.tail is not None:
+        parser.error("--head and --tail are mutually exclusive")
 
     if args.install:
         source_path = os.environ.get("PYBIN_SOURCE_PATH")
@@ -83,7 +91,17 @@ def pybin():
         return
 
     if args.history:
-        print(sdk.read_file_content(os.path.join(sdk.get_home(), ".pybin_history")))
+        if args.grep is not None:
+            history_cmd = f"grep '{args.grep}' {os.path.join(sdk.get_home(), '.pybin_history')}"
+        else:
+            history_cmd = f"cat {os.path.join(sdk.get_home(), '.pybin_history')}"
+        if args.head is not None:
+            history_cmd = history_cmd + f" | head -{args.head}"
+        if args.tail is not None:
+            history_cmd = history_cmd + f" | tail -{args.tail}"
+        if sys.stdout.isatty() and not any([args.grep, args.head, args.tail]):
+            history_cmd = history_cmd + f" | less"
+        sdk.run_bash_tty(history_cmd)
         return
 
     if not args.version and not args.author and not args.function:

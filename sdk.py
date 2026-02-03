@@ -384,6 +384,9 @@ def run_shell(cmd: str) -> subprocess.CompletedProcess:
     else:
         return process
 
+def run_bash_tty(cmd: str) -> subprocess.CompletedProcess:
+    return subprocess.run(cmd, shell=True)
+
 
 def run_shell_tty(cmd: str) -> subprocess.CompletedProcess:
     master_fd, slave_fd = pty.openpty()
