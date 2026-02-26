@@ -1786,5 +1786,9 @@ def tail_f():
         time.sleep(0.1)
 
 
+def myip():
+    print(sdk.get_ip())
+
+
 if __name__ == "__main__":
     sdk.run_main()
