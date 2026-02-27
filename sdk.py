@@ -33,12 +33,13 @@ from typing import Type, AnyStr, List, Any, Dict, Optional, Callable, Tuple
 import psutil
 import requests
 import setproctitle as setproctitle
+import sqlglot
 from colorama import Fore, Style
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from moz_sql_parser import parse
 from requests import Response
 from requests.auth import HTTPBasicAuth
+from sqlglot import expressions as exp
 
 try:
     from .ann import RuntimeKey, RuntimeMode, RuntimeEnv
@@ -383,6 +384,7 @@ def run_shell(cmd: str) -> subprocess.CompletedProcess:
         raise RuntimeError(process.stderr)
     else:
         return process
+
 
 def run_bash_tty(cmd: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, shell=True)
@@ -798,7 +800,7 @@ class Sql2EsConverter:
     def __init__(self, sql: str):
         self.__index = None
         self.__sql = sql
-        self.__parsed = parse(sql)
+        self.__ast = sqlglot.parse_one(sql)
         self.__dsl = {}
 
     def get_dsl(self, indent: int = 2) -> str:
@@ -807,116 +809,174 @@ class Sql2EsConverter:
     def get_index(self) -> str:
         return self.__index
 
-    def convert(self) -> 'Sql2EsConverter':
+    def convert(self) -> "Sql2EsConverter":
         self.__dsl = {}
 
-        if 'select' in self.__parsed:
-            self.__dsl['_source'] = self.__parse_select(self.__parsed['select'])
+        # support (select) subquery
+        if isinstance(self.__ast, exp.Subquery):
+            self.__ast = self.__ast.this
 
-        if 'from' in self.__parsed:
-            self.__index = self.__parsed['from']
+        # only support select statements
+        if not isinstance(self.__ast, exp.Select):
+            raise ValueError("Only SELECT statements are supported")
 
-        if 'where' in self.__parsed:
-            self.__dsl['query'] = self.__parse_where(self.__parsed['where'])
+        # select
+        fields = self.__parse_select(self.__ast.expressions)
+        if fields:
+            self.__dsl["_source"] = fields
 
-        if 'orderby' in self.__parsed:
-            self.__dsl['sort'] = self.__parse_order_by(self.__parsed['orderby'])
+        # table
+        table = self.__ast.find(exp.Table)
+        if table:
+            self.__index = table.name
 
-        if 'limit' in self.__parsed and 'size' not in self.__dsl:
-            self.__dsl['size'] = self.__parsed['limit']
+        # where
+        where = self.__ast.args.get("where")
+        if where:
+            self.__dsl["query"] = self.__parse_where(where.this)
+
+        # group by
+        group = self.__ast.args.get("group")
+        if group:
+            self.__parse_group_by(group)
+
+        # order by
+        order = self.__ast.args.get("order")
+        if order:
+            self.__dsl["sort"] = [
+                {o.this.name: {"order": o.args.get("desc") and "desc" or "asc"}} for o in order.expressions
+            ]
+
+        # limit
+        limit = self.__ast.args.get("limit")
+        if limit:
+            self.__dsl["size"] = int(limit.args.get("expression").this)
 
         return self
 
-    def __parse_select(self, select) -> list:
+    def __parse_select(self, expressions: list) -> list:
         fields = []
-        if isinstance(select, list):
-            for item in select:
-                value = item.get('value')
-                if isinstance(value, str):
-                    fields.append(value)
-        elif isinstance(select, dict):
-            value = select.get('value')
-            if isinstance(value, str):
-                fields.append(value)
-            elif isinstance(value, dict):
-                if 'count' in value:
-                    self.__dsl['size'] = 0
+        for expression in expressions:
+            # select *
+            if isinstance(expression, exp.Star):
+                return []
+            # select count(*)
+            elif isinstance(expression, exp.Count):
+                self.__dsl['size'] = 0
+            # select field
+            elif isinstance(expression, exp.Column):
+                fields.append(expression.name)
+            # select alias
+            elif isinstance(expression, exp.Alias) and isinstance(expression.this, exp.Column):
+                fields.append(expression.this.name)
+
         return fields
 
-    def __parse_order_by(self, order) -> list:
-        if isinstance(order, dict):
-            return [{order['value']: {'order': order.get('sort', 'asc')}}]
+    def __parse_where(self, expr) -> dict:
+        dsl = self.__parse_where_expr(expr)
+        if "bool" in dsl:
+            return dsl
         else:
-            return [{o['value']: {'order': o.get('sort', 'asc')}} for o in order]
+            return {"bool": {"filter": [dsl]}}
 
-    def __parse_where(self, where) -> dict:
-        return self.__parse_where_logic(where)
+    def __parse_where_expr(self, expr):
+        if isinstance(expr, exp.Paren):
+            return self.__parse_where_expr(expr.this)
 
-    def __parse_where_logic(self, expr) -> dict:
-        if isinstance(expr, str):
-            # 支持 NOT is_admin => { "term": { "is_admin": true } }
-            return {'term': {expr: True}}
-
-        if isinstance(expr, dict):
-            if 'and' in expr:
-                must_dsl = {'bool': {'must': [self.__parse_where_logic(e) for e in expr['and']]}}
-                return self.__parse_where_after(must_dsl, 'must')
-            elif 'or' in expr:
-                should_dsl = {'bool': {'should': [self.__parse_where_logic(e) for e in expr['or']]}}
-                return self.__parse_where_after(should_dsl, 'should')
-            elif 'not' in expr:
-                must_not_dsl = {'bool': {'must_not': [self.__parse_where_logic(expr['not'])]}}
-                return self.__parse_where_after(must_not_dsl, 'must_not')
-
-            # 通用比较操作符
-            ops = {
-                ('=', '==', 'eq'): lambda f, v: {'term': {f: v}},
-                ('!=', '<>', 'neq'): lambda f, v: {'bool': {'must_not': [{'term': {f: v}}]}},
-                ('>', 'gt'): lambda f, v: {'range': {f: {'gt': v}}},
-                ('<', 'lt'): lambda f, v: {'range': {f: {'lt': v}}},
-                ('>=', 'gte'): lambda f, v: {'range': {f: {'gte': v}}},
-                ('<=', 'lte'): lambda f, v: {'range': {f: {'lte': v}}},
-                ('in',): lambda f, v: {'terms': {f: [v] if not isinstance(v, list) else v}},
-                ('nin',): lambda f, v: {'bool': {'must_not': [{'terms': {f: [v] if not isinstance(v, list) else v}}]}},
-                ('like',): lambda f, v: {'wildcard': {f: re.sub(r'^%|%$', '*', v)}}
-            }
-
-            for op_tuple, handler in ops.items():
-                op_tuple = op_tuple if isinstance(op_tuple, tuple) else (op_tuple,)
-                op = next(iter(expr))
-
-                if op not in op_tuple:
-                    continue
-
-                field, value = expr[op]
-                field = field.replace('\\', '')
-                if isinstance(value, dict) and 'literal' in value:
-                    value = value['literal']
-
-                query_clause = handler(field, value)
-
-                if '.' in field:
-                    nested_path = field.split('.')[0]
-                    return {'nested': {'path': nested_path, 'query': query_clause}}
+        elif isinstance(expr, exp.And):
+            filters = []
+            for side in [expr.left, expr.right]:
+                parsed_side = self.__parse_where_expr(side)
+                if "bool" in parsed_side and "filter" in parsed_side["bool"]:
+                    filters.extend(parsed_side["bool"]["filter"])
                 else:
-                    return query_clause
+                    filters.append(parsed_side)
+            return {"bool": {"filter": filters}} if len(filters) > 1 else filters[0]
 
-        raise ValueError("Unsupported expression: " + str(expr))
+        elif isinstance(expr, exp.Or):
+            shoulds = []
+            for side in [expr.left, expr.right]:
+                parsed_side = self.__parse_where_expr(side)
+                if "bool" in parsed_side and "should" in parsed_side["bool"]:
+                    shoulds.extend(parsed_side["bool"]["should"])
+                else:
+                    shoulds.append(parsed_side)
+            return {"bool": {"should": shoulds}} if len(shoulds) > 1 else shoulds[0]
 
-    def __parse_where_after(self, dsl, clause) -> str:
-        clause_list = dsl['bool'][clause]
-        nested_dict_list = {}
-        for clause_item in reversed(clause_list):
-            if 'nested' in clause_item:
-                nested_list = nested_dict_list.get(clause_item['nested']['path'], [])
-                nested_list.append(clause_item['nested']['query'])
-                nested_dict_list[clause_item['nested']['path']] = nested_list
-                clause_list.remove(clause_item)
+        elif isinstance(expr, exp.Not):
+            inner = self.__parse_where_expr(expr.this)
+            return {"bool": {"must_not": inner}}
 
-        for key, values in nested_dict_list.items():
-            dsl['bool'][clause].append({'nested': {'path': key, 'query': {'bool': {clause: values}}}})
+        elif isinstance(expr, exp.EQ):
+            field = expr.left.name
+            value = expr.right.this if hasattr(expr.right, "this") else expr.right
+            if "." in field:
+                nested_path = field.split(".")[0]
+                return {"nested": {"path": nested_path, "query": {"term": {field: value}}}}
+            else:
+                return {"term": {field: value}}
 
-        return dsl
+        elif isinstance(expr, exp.NEQ):
+            field = expr.left.name
+            value = expr.right.this if hasattr(expr.right, "this") else expr.right
+            return {"bool": {"must_not": {"term": {field: value}}}}
+
+        elif isinstance(expr, (exp.GT, exp.GTE, exp.LT, exp.LTE)):
+            field = expr.left.name
+            value = expr.right.this if hasattr(expr.right, "this") else expr.right
+            op_map = {exp.GT: "gt", exp.GTE: "gte", exp.LT: "lt", exp.LTE: "lte"}
+            return {"range": {field: {op_map[type(expr)]: value}}}
+
+        elif isinstance(expr, exp.In):
+            field = expr.this.name
+            values = [v.this for v in expr.expressions]
+            return {"terms": {field: values}}
+
+        elif isinstance(expr, exp.Not):
+            field = expr.this.name
+            values = [v.this for v in expr.expressions]
+            return {"bool": {"must_not": {"terms": {field: values}}}}
+
+        elif isinstance(expr, exp.Like):
+            field = expr.this.name
+            value = expr.expression.this.replace("%", "*")
+            return {"wildcard": {field: value}}
+
+        else:
+            raise ValueError(f"Unsupported expression: {expr}")
+
+    def __parse_group_by(self, group):
+        self.__dsl["size"] = 0
+
+        group_fields = [g.name for g in group.expressions]
+        current_level = {}
+
+        for field in reversed(group_fields):
+            current_level = {f"group_by_{field}": {"terms": {"field": field}, "aggs": current_level or {}}}
+
+        root_key = list(current_level.keys())[0]
+
+        for expression in self.__ast.expressions:
+            if isinstance(expression, exp.Count):
+                current_level[root_key]["aggs"]["count_value"] = {"value_count": {"field": "_id"}}
+
+            elif isinstance(expression, exp.Sum):
+                field = expression.this.name
+                current_level[root_key]["aggs"][f"sum_{field}"] = {"sum": {"field": field}}
+
+            elif isinstance(expression, exp.Avg):
+                field = expression.this.name
+                current_level[root_key]["aggs"][f"avg_{field}"] = {"avg": {"field": field}}
+
+            elif isinstance(expression, exp.Min):
+                field = expression.this.name
+                current_level[root_key]["aggs"][f"min_{field}"] = {"min": {"field": field}}
+
+            elif isinstance(expression, exp.Max):
+                field = expression.this.name
+                current_level[root_key]["aggs"][f"max_{field}"] = {"max": {"field": field}}
+
+        self.__dsl["aggs"] = current_level
 
 
 class TransactionalReplacer:
