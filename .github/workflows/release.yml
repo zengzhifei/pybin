@@ -30,7 +30,7 @@ jobs:
 
       - name: Package
         run: |
-          tar czf "pybin-${{ matrix.triple }}.tar.gz" \
+          tar czf "../pybin-${{ matrix.triple }}.tar.gz" \
             --exclude='.git' \
             --exclude='__pycache__' \
             --exclude='.uv' \
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pybin-${{ matrix.triple }}
-          path: pybin-${{ matrix.triple }}.tar.gz
+          path: ../pybin-${{ matrix.triple }}.tar.gz
 
   release:
     needs: [build]
