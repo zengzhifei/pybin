@@ -1,60 +1,75 @@
 # pybin
 
-提供linux和mac上一些常用运维工具命令和开发SDK。
+运维工具 CLI 和 Python SDK，支持 macOS / Linux。
 
-## 安装教程
+## 安装
 
-### 准备工作
-- Python 3.6 or later
+### 在线安装
 
-### 安装步骤
-1. **Clone源码**
 ```sh
-git clone git@github.com:zengzhifei/pybin.git
-or
+curl -LsSf https://raw.githubusercontent.com/zengzhifei/pybin/main/install.sh | bash
+```
+
+或手动：
+
+```sh
 git clone https://github.com/zengzhifei/pybin.git
 cd pybin
+./setup.sh
 ```
 
-2. **安装环境**
-> <small>_首次安装先使用pip或pip3安装环境依赖，重新安装可省略_</small>
+### 离线安装
+
+从 [Releases](https://github.com/zengzhifei/pybin/releases) 下载对应平台的 `pybin-*.tar.gz`，解压后执行：
+
 ```sh
-pip3 install -r requirements.txt
-```
-或
-```sh
-pip3 install --user -r requirements.txt
+tar xzf pybin-*.tar.gz
+cd pybin
+./setup.sh
 ```
 
-> <small>_如果部分依赖无法安装，可尝试创建或更新~/.pip/pip.conf文件，添加镜像源，如：_</small>
-```
-[global]
-index-url = https://pypi.tuna.tsinghua.edu.cn/simple
-```
+## 更新
 
-3. **安装pybin**
-```sh
-python3 install.py
-```
-
-### 更新步骤
-1. **拉取最新代码**
 ```sh
 cd pybin
 git pull
+./setup.sh --force
 ```
 
-2. **更新pybin**
+## 卸载
+
 ```sh
-python3 install.py
-```
-或
-```sh
-pybin -i
+pybin --uninstall
 ```
 
-### 查看更多
-><small>_查看作者信息，工具版本，提供命令等内容，可执行如下命令:_</small>
+## 功能
+
+- **信息** — 版本、Python 信息、本机 IP
+- **Shell** — 配置重载、智能目录跳转
+- **数据库** — MySQL、Redis、Elasticsearch 连接与查询
+- **服务器管理** — Go / Java 服务启停
+- **SSH** — 单机/批量 SSH
+- **Git** — 推送、分支清理、cherry-pick 等
+- **文件** — 安全删除、目录排序、文件追踪、Excel 读写
+- **文本** — 大小写转换、grep、哈希、CRC32 等
+- **部署** — HTTP 文件服务、文件分发
+- **安全** — AES 加解密、Git Hook 加解密
+- **其他** — 日期计算、消息推送、邮件发送等
+
+## 开发
+
 ```sh
-pybin --help
+# 安装依赖并部署
+./setup.sh
+
+# 仅提交代码
+make push
+
+# 发布新版本
+make release          # 自动 bump 版本
+make release BUMP=false  # 不 bump
 ```
+
+## License
+
+MIT
