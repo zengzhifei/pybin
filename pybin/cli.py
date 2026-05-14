@@ -26,9 +26,8 @@ from urllib.parse import urlparse
 
 import humanize
 import pandas as pd
-import psutil as psutil
-import requests as requests
-from inotify_simple import INotify, flags
+import psutil
+import requests
 from tabulate import tabulate
 
 import sdk
@@ -42,10 +41,11 @@ def pybin():
     group.add_argument("-v", "--version", action="store_true", help="show version")
     group.add_argument("-u", "--author", action="store_true", help="show author")
     group.add_argument("-f", "--function", action="store_true", help="show function")
-    group.add_argument("-i", "--install", "--update", action="store_true", help="install or update pybin")
     group.add_argument("-c", "--config", type=str, nargs="+", help="show config")
+    group.add_argument("-p", "--python", action="store_true", help="show python info")
     group.add_argument("-r", "--rc", action="store_true", help="show rc config")
     group.add_argument("--history", action="store_true", help="show cmd run history")
+    group.add_argument("--uninstall", action="store_true", help="uninstall pybin")
     parser.add_argument("--head", type=int, help="show history head")
     parser.add_argument("--tail", type=int, help="show history tail")
     parser.add_argument("--grep", type=str, help="show history grep")
@@ -55,13 +55,6 @@ def pybin():
         parser.error("--grep/--head/--tail must be used with --history")
     if args.head is not None and args.tail is not None:
         parser.error("--head and --tail are mutually exclusive")
-
-    if args.install:
-        source_path = os.environ.get("PYBIN_SOURCE_PATH")
-        os.chdir(source_path)
-        process = sdk.run_shell(f"{sys.executable} install.py")
-        print(process.stdout.rstrip('\n'))
-        return
 
     if args.config:
         config_keys = args.config
@@ -103,7 +96,28 @@ def pybin():
         sdk.run_bash_tty(history_cmd)
         return
 
-    if not args.version and not args.author and not args.function:
+    if args.uninstall:
+        import signal
+        signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
+
+        profiles = sdk.get_sh_profiles()
+        py_profile = sdk.get_home().joinpath(".pybin").joinpath("pybin_profile")
+        py_profile_str = str(py_profile)
+
+        for profile in profiles:
+            if not os.path.exists(profile):
+                continue
+            lines = sdk.read_file(profile)
+            new_lines = [l for l in lines if py_profile_str not in l]
+            if len(new_lines) != len(lines):
+                sdk.write_file(profile, [l + "\n" for l in new_lines])
+                print(f"Removed from: {profile}")
+
+        shutil.rmtree(str(py_profile.parent), ignore_errors=True)
+        print("Uninstalled.")
+        return
+
+    if not args.version and not args.author and not args.function and not args.python:
         args.version = args.author = args.function = True
 
     headers = []
@@ -114,6 +128,9 @@ def pybin():
     if args.author:
         headers.append("author")
         rows.append(__author__)
+    if args.python:
+        headers.append("python")
+        rows.append(f"{sys.executable}  ({sys.version.split()[0]})")
     if args.function:
         clis = os.environ.get("PYBIN_CLIS").split(";")
         for cli in clis:
@@ -153,8 +170,7 @@ def scd():
 
     data_file = sdk.get_home().joinpath(".scd")
     if not os.path.exists(data_file):
-        file = open(data_file, 'w')
-        file.close()
+        Path(data_file).touch()
 
     if args.list is not None:
         line_count = None if args.list <= 0 else args.list
@@ -347,6 +363,39 @@ def deep_find_app():
 
     cmd = f'find ~/Library -type d -iname "*{args.app}*" 2>/dev/null | sed "s/ /\\ /g"'
     print(cmd)
+    sys.exit(250)
+
+
+@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
+def runcmd():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("name", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
+    parser.add_argument("params", type=str, nargs="*")
+    args = parser.parse_args()
+
+    templates = sdk.get_config(args.name)
+    if isinstance(templates, str):
+        templates = [templates]
+
+    cmds = []
+    for template in templates:
+        placeholder_count = template.count('{}')
+        if len(args.params) < placeholder_count:
+            raise ValueError("Not enough values provided for the placeholders")
+
+        formatted_string = template
+        for _ in range(placeholder_count):
+            formatted_string = formatted_string.replace('{}', str(args.params.pop(0)), 1)
+
+        if not formatted_string.endswith(";"):
+            formatted_string = f"{formatted_string};"
+
+        cmds.append(formatted_string)
+
+    cmd = " ".join(cmds)
+
+    print(cmd)
+
     sys.exit(250)
 
 
@@ -564,39 +613,6 @@ def cleartrash():
         print(f"{file} is removed.")
 
 
-@runtime(env=RuntimeEnv.SHELL, shell_exit_code=250)
-def runcmd():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("name", choices=list(cast(dict, sdk.get_config(key=None)).keys()))
-    parser.add_argument("params", type=str, nargs="*")
-    args = parser.parse_args()
-
-    templates = sdk.get_config(args.name)
-    if isinstance(templates, str):
-        templates = [templates]
-
-    cmds = []
-    for template in templates:
-        placeholder_count = template.count('{}')
-        if len(args.params) < placeholder_count:
-            raise ValueError("Not enough values provided for the placeholders")
-
-        formatted_string = template
-        for _ in range(placeholder_count):
-            formatted_string = formatted_string.replace('{}', str(args.params.pop(0)), 1)
-
-        if not formatted_string.endswith(";"):
-            formatted_string = f"{formatted_string};"
-
-        cmds.append(formatted_string)
-
-    cmd = " ".join(cmds)
-
-    print(cmd)
-
-    sys.exit(250)
-
-
 def trim():
     parser = argparse.ArgumentParser()
     parser.add_argument("-t", type=int, choices=[0, 1, 2, 3, 4], required=False, default=0,
@@ -800,7 +816,8 @@ def securekeeper():
     if args.password is not None:
         password = args.password
     else:
-        password = input("please enter your password: ")
+        import getpass
+        password = getpass.getpass("please enter your password: ")
 
     if not os.path.exists(args.input):
         raise FileNotFoundError(f"{args.input} not found")
@@ -837,7 +854,8 @@ def securehooker():
     if args.password is not None:
         password = args.password
     else:
-        password = input("please enter your password: ")
+        import getpass
+        password = getpass.getpass("please enter your password: ")
 
     mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
     mode |= stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH
@@ -1221,7 +1239,7 @@ def http_file_server():
                 if osType == "Linux":
                     fn = os.path.join(path, fn[0])
                 else:
-                    fn = os.path.join(path, fn[0].decode("utf-8"))
+                    fn = os.path.join(path, fn[0])
             except Exception as e:
                 return False, "Please do not use Chinese file name, or use IE to upload files with Chinese name."
             if os.path.exists(fn):
@@ -1734,6 +1752,8 @@ def tail_f():
     file_path = os.path.abspath(args.file)
     file_name = os.path.basename(file_path)
     file_dir = os.path.dirname(file_path)
+
+    from inotify_simple import INotify, flags
 
     inotify = INotify()
     wd_dir = None

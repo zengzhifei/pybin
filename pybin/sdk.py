@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import argparse
 import ast
 import hashlib
@@ -32,13 +31,12 @@ from typing import Type, AnyStr, List, Any, Dict, Optional, Callable, Tuple
 
 import psutil
 import requests
-import setproctitle as setproctitle
+import setproctitle
 import sqlglot
 from colorama import Fore, Style
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from requests import Response
-from requests.auth import HTTPBasicAuth
 from sqlglot import expressions as exp
 
 try:
@@ -65,7 +63,8 @@ def get_ip() -> str:
 
 
 def get_sh_env() -> str:
-    return os.getenv("SHELL").split("/")[-1]
+    shell = os.getenv("SHELL")
+    return shell.split("/")[-1] if shell else "sh"
 
 
 def get_sh_profiles() -> list:
@@ -187,6 +186,7 @@ def upload_file_with_curl(url: str, file_path: str, params: List[str] = None) ->
 
 def parse_multipart(fp, headers):
     """Parse multipart/form-data POST body, replacing cgi.FieldStorage."""
+    import io
     import types
     from email.parser import BytesParser
     from email.policy import HTTP
@@ -425,11 +425,13 @@ def run_bash_tty(cmd: str) -> subprocess.CompletedProcess:
 
 
 def run_shell_tty(cmd: str) -> subprocess.CompletedProcess:
-    master_fd, slave_fd = pty.openpty()
+    master_fd, slave_fd = -1, -1
     try:
+        master_fd, slave_fd = pty.openpty()
         process = subprocess.Popen(cmd, shell=True, stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
                                    universal_newlines=True)
         os.close(slave_fd)
+        slave_fd = -1
 
         output = ""
         while True:
@@ -446,7 +448,10 @@ def run_shell_tty(cmd: str) -> subprocess.CompletedProcess:
             raise RuntimeError(output)
         return subprocess.CompletedProcess(args=cmd, returncode=process.returncode, stdout=output, stderr="")
     finally:
-        os.close(master_fd)
+        if master_fd != -1:
+            os.close(master_fd)
+        if slave_fd != -1:
+            os.close(slave_fd)
 
 
 def run_cmd(cmd: List[str]) -> subprocess.CompletedProcess:
@@ -966,7 +971,7 @@ class Sql2EsConverter:
             values = [v.this for v in expr.expressions]
             return {"terms": {field: values}}
 
-        elif isinstance(expr, exp.Not):
+        elif isinstance(expr, exp.NotIn):
             field = expr.this.name
             values = [v.this for v in expr.expressions]
             return {"bool": {"must_not": {"terms": {field: values}}}}

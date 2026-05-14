@@ -1,1 +1,7 @@
-__pycache__
+__pycache__/
+.python/
+.uv/
+.venv/
+build/
+*.egg-info/
+.DS_Store

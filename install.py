@@ -9,20 +9,10 @@ import textwrap
 from pathlib import Path
 
 
-def pre_version_check():
-    min_version = (3, 6, 0)
-    if sys.version_info < min_version:
-        print(f"python version required {'.'.join(map(str, min_version))} or later.")
-        sys.exit(1)
-
-
 def install_requirements(args):
     with open(os.devnull, "wb") as devnull:
         try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', 'requirements.txt',
-                                   '--disable-pip-version-check'], stdout=devnull)
-
-            import sdk
+            from pybin import sdk
             other_config_file = sdk.get_home().joinpath(".pybin_config.json")
             if not other_config_file.exists():
                 return
@@ -30,10 +20,10 @@ def install_requirements(args):
             for extend_cli in other_config.get('__extend_clis', []):
                 if not Path(extend_cli).exists():
                     continue
-                requirements = Path.absolute(Path(extend_cli)).parent.joinpath('requirements.txt')
+                requirements = Path(extend_cli).absolute().parent.joinpath('requirements.txt')
                 if not requirements.exists():
                     continue
-                subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', requirements,
+                subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', str(requirements),
                                        '--disable-pip-version-check'], stdout=devnull)
 
         except subprocess.CalledProcessError:
@@ -42,8 +32,8 @@ def install_requirements(args):
 
 
 def install_bin(args):
-    import sdk
-    from ann import RuntimeEnv, RuntimeKey
+    from pybin import sdk
+    from pybin.ann import RuntimeEnv, RuntimeKey
 
     root_path = sdk.get_home().joinpath(".pybin")
     current_path = Path.absolute(Path(__file__)).parent
@@ -56,27 +46,30 @@ def install_bin(args):
         other_config = {}
     sdk.merge_two_levels_dict(config, other_config)
 
-    if os.path.exists(root_path):
-        shutil.rmtree(root_path)
-    if not os.path.exists(root_path):
-        os.mkdir(root_path)
-
-    shutil.copy(current_path.joinpath("sdk.py"), root_path)
-    shutil.copy(current_path.joinpath("ann.py"), root_path)
-    shutil.copy(current_path.joinpath("cli.py"), root_path)
-    shutil.copy(current_path.joinpath("__about__.py"), root_path)
-    sdk.write_json_file(str(root_path.joinpath("config.json")), config)
+    shutil.rmtree(root_path, ignore_errors=True)
+    os.mkdir(root_path)
 
     mode = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
     mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
+    for file_name in ["sdk.py", "ann.py", "cli.py", "__about__.py"]:
+        shutil.copy(current_path.joinpath("pybin", file_name), root_path)
+
+    cli_path = root_path.joinpath("cli.py")
+    content = cli_path.read_text()
+    if content.startswith("#!/"):
+        cli_path.write_text(f"#!{sys.executable}\n" + content.split("\n", 1)[1])
+
+    sdk.write_json_file(str(root_path.joinpath("config.json")), config)
+
     os.chmod(root_path.joinpath("sdk.py"), mode=mode)
     os.chmod(root_path.joinpath("ann.py"), mode=mode)
     os.chmod(root_path.joinpath("cli.py"), mode=mode)
-    os.chmod(current_path.joinpath("__about__.py"), mode=mode)
+    os.chmod(root_path.joinpath("__about__.py"), mode=mode)
     os.chmod(root_path.joinpath("config.json"), mode=stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
 
-    funcs_map = sdk.get_module_funcs('cli.py')
+    sys.path.insert(0, str(root_path))
+    funcs_map = sdk.get_module_funcs(str(root_path.joinpath('cli.py')))
     python_funcs = funcs_map.get(RuntimeEnv.PYTHON.value, {})
     for name, func in python_funcs.items():
         os.symlink(root_path.joinpath("cli.py"), root_path.joinpath(name))
@@ -143,9 +136,9 @@ def install_bin(args):
     py_config = [line + '\n' for line in py_config]
     sdk.write_file(str(py_profile), py_config)
 
-    config = sdk.get_sh_profiles()[0]
-    if f"{py_profile}" not in open(config).read():
-        sdk.write_file_content_by_append(config, f'\n[[ -s "{py_profile}" ]] && source "{py_profile}"\n')
+    shell_config = sdk.get_sh_profiles()[0]
+    if f"{py_profile}" not in open(shell_config).read():
+        sdk.write_file_content_by_append(shell_config, f'\n[[ -s "{py_profile}" ]] && source "{py_profile}"\n')
 
 
 def install_site_packages(args):
@@ -164,7 +157,6 @@ def install():
     parser.add_argument("--ignore-error", action="store_true", help="ignore install requirements error")
     args = parser.parse_args()
 
-    pre_version_check()
     install_requirements(args)
     install_bin(args)
     install_site_packages(args)
