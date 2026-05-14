@@ -35,11 +35,12 @@ jobs:
             --exclude='__pycache__' \
             --exclude='.uv' \
             .
+          mv "../pybin-${{ matrix.triple }}.tar.gz" .
 
       - uses: actions/upload-artifact@v4
         with:
           name: pybin-${{ matrix.triple }}
-          path: ../pybin-${{ matrix.triple }}.tar.gz
+          path: pybin-${{ matrix.triple }}.tar.gz
 
   release:
     needs: [build]

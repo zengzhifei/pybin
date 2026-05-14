@@ -21,6 +21,8 @@ release:
 	git tag -d v$$v 2>/dev/null || true; \
 	git tag v$$v; \
 	git push origin main v$$v; \
+	echo "https://github.com/zengzhifei/pybin/actions"; \
+	echo "https://github.com/zengzhifei/pybin/releases"; \
 	echo "Released v$$v."
 
 .PHONY: push release
