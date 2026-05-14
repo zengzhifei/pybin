@@ -2,7 +2,6 @@
 
 import argparse
 import ast
-import cgi
 import html
 import inspect
 import io
@@ -1375,8 +1374,7 @@ def file_deploy_server():
     def post_method(handler):
         parse = urlparse(handler.path)
         if parse.path == '/deploy':
-            form = cgi.FieldStorage(fp=handler.rfile, headers=handler.headers,
-                                    environ={'REQUEST_METHOD': 'POST', 'CONTENT_TYPE': handler.headers['Content-Type']})
+            form = sdk.parse_multipart(handler.rfile, handler.headers)
             uploaded_file = form['file']
             file_name = os.path.basename(uploaded_file.filename)
 

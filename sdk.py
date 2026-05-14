@@ -185,6 +185,40 @@ def upload_file_with_curl(url: str, file_path: str, params: List[str] = None) ->
     return run_popen(curl_command, consumer=consumer)
 
 
+def parse_multipart(fp, headers):
+    """Parse multipart/form-data POST body, replacing cgi.FieldStorage."""
+    import types
+    from email.parser import BytesParser
+    from email.policy import HTTP
+
+    ctype = headers.get('Content-Type', '')
+    clen = int(headers.get('Content-Length', 0))
+    raw = f"Content-Type: {ctype}\r\n\r\n".encode() + fp.read(clen)
+    msg = BytesParser(policy=HTTP).parsebytes(raw)
+    fields = {}
+    if msg.is_multipart():
+        for part in msg.iter_parts():
+            if part.get_content_disposition() != 'form-data':
+                continue
+            name = part.get_param('name', header='content-disposition')
+            if not name:
+                continue
+            filename = part.get_filename()
+            payload = part.get_payload(decode=True)
+            item = types.SimpleNamespace(name=name, filename=filename,
+                                          type_options={}, value=None, file=None)
+            if filename:
+                item.file = io.BytesIO(payload)
+            else:
+                item.value = payload.decode(part.get_content_charset() or 'utf-8') if payload else ''
+            if name in fields:
+                existing = fields[name]
+                fields[name] = [existing, item] if not isinstance(existing, list) else existing + [item]
+            else:
+                fields[name] = item
+    return fields
+
+
 def get_config(key: str, is_caller: bool = True, config_file: str = None, default_value: Any = None) -> Any:
     if config_file is None:
         runtime_path = os.environ.get("PYBIN_RUNTIME_PATH")
