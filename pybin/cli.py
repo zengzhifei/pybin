@@ -85,7 +85,7 @@ def pybin():
 
     if args.history:
         if args.grep is not None:
-            history_cmd = f"grep '{args.grep}' {os.path.join(sdk.get_home(), '.pybin_history')}"
+            history_cmd = f"grep {shlex.quote(args.grep)} {os.path.join(sdk.get_home(), '.pybin_history')}"
         else:
             history_cmd = f"cat {os.path.join(sdk.get_home(), '.pybin_history')}"
         if args.head is not None:
@@ -374,7 +374,7 @@ def deep_find_app():
     parser.add_argument('app', type=str)
     args = parser.parse_args()
 
-    cmd = f'find ~/Library -type d -iname "*{args.app}*" 2>/dev/null | sed "s/ /\\ /g"'
+    cmd = f'find ~/Library -type d -iname {shlex.quote("*" + args.app + "*")} 2>/dev/null | sed "s/ /\\ /g"'
     print(cmd)
     sys.exit(250)
 

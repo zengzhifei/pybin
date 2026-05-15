@@ -8,6 +8,8 @@ import sys
 import textwrap
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def install_requirements(args):
     with open(os.devnull, "wb") as devnull:
@@ -144,7 +146,8 @@ def install_bin(args):
 def install_site_packages(args):
     with open(os.devnull, "wb") as devnull:
         try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '.'], stdout=devnull)
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--no-build-isolation',
+                                       '--disable-pip-version-check', '.'], stdout=devnull)
         except subprocess.CalledProcessError:
             if not args.ignore_error:
                 sys.exit(1)

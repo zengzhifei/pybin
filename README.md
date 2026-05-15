@@ -20,7 +20,7 @@ cd pybin
 
 ### 离线安装
 
-从 [Releases](https://github.com/zengzhifei/pybin/releases) 下载对应平台的 `pybin-*.tar.gz`，解压后执行：
+从 [Releases](https://github.com/zengzhifei/pybin/releases) 下载对应平台的 `pybin-*.tar.gz`（已内置 Python 环境和依赖，无需联网），解压后执行：
 
 ```sh
 tar xzf pybin-*.tar.gz
