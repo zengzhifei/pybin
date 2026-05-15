@@ -27,6 +27,5 @@ if [ -d "$DIR" ]; then
 fi
 
 echo "Downloading pybin..."
-mkdir -p "$DIR"
-curl -LsSf "$URL" | tar xz -C "$DIR"
+curl -LsSf "$URL" | tar xz
 cd "$DIR" && ./setup.sh

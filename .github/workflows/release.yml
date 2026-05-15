@@ -32,12 +32,10 @@ jobs:
 
       - name: Package
         run: |
-          tar czf "../pybin-${{ matrix.triple }}.tar.gz" \
-            --exclude='.git' \
-            --exclude='__pycache__' \
-            --exclude='.uv' \
-            .
-          mv "../pybin-${{ matrix.triple }}.tar.gz" .
+          mkdir -p pkg/pybin && \
+          tar c --exclude='.git' --exclude='__pycache__' --exclude='.uv' --exclude='.venv' --exclude='build' --exclude='./pkg' . | tar x -C pkg/pybin && \
+          tar czf "pybin-${{ matrix.triple }}.tar.gz" -C pkg pybin && \
+          rm -rf pkg
 
       - uses: actions/upload-artifact@v4
         with:

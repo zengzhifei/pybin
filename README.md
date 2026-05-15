@@ -66,8 +66,8 @@ pybin --uninstall
 make push
 
 # 发布新版本
-make release          # 自动 bump 版本
-make release BUMP=false  # 不 bump
+make release          # 发布新版本
+make rr               # 重新发布
 ```
 
 ## License
