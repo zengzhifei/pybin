@@ -104,6 +104,9 @@ create_venv() {
         ln -sf "../../.python/bin/python3" "$link"
     done
 
+    echo "Reinstalling pip..."
+    $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
+
     fix_paths
 }
 
@@ -115,6 +118,10 @@ install_deps() {
 }
 
 main() {
+    if [ "$(uname -s)" = "Darwin" ]; then
+        xattr -r -d com.apple.quarantine "$SCRIPT_DIR" 2>/dev/null || true
+    fi
+
     if ! check_ready; then
         local uv_cmd
         uv_cmd=$(ensure_uv)

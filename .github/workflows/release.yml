@@ -28,7 +28,7 @@ jobs:
       - name: Setup environment
         run: ./setup.sh --env-only
         env:
-          UV_PYTHON_PLATFORM: ${{ matrix.triple == 'x86_64-apple-darwin' && 'x86_64-apple-darwin' || '' }}
+          UV_PYTHON_PLATFORM: ${{ matrix.runner == 'ubuntu-latest' && 'x86_64-unknown-linux-musl' || matrix.triple }}
 
       - name: Package
         run: |
