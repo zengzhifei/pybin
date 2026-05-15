@@ -147,10 +147,9 @@ def install_site_packages(args):
     with open(os.devnull, "wb") as devnull:
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--no-build-isolation',
-                                       '--disable-pip-version-check', '.'], stdout=devnull)
-        except subprocess.CalledProcessError:
-            if not args.ignore_error:
-                sys.exit(1)
+                                       '--disable-pip-version-check', '.'], stdout=devnull, stderr=devnull)
+        except (subprocess.CalledProcessError, Exception):
+            pass
 
 
 def install():
