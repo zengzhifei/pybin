@@ -111,7 +111,7 @@ def pybin():
             lines = sdk.read_file(profile)
             new_lines = [l for l in lines if py_profile_str not in l]
             if len(new_lines) != len(lines):
-                sdk.write_file(profile, [l + "\n" for l in new_lines])
+                sdk.write_file(profile, new_lines)
                 print(f"Removed from: {profile}")
 
         shutil.rmtree(str(py_profile.parent), ignore_errors=True)
@@ -579,8 +579,13 @@ def gitfetch():
 
 def saferm():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--raw", action="store_true", help="use system rm directly")
     parser.add_argument("files", nargs="+")
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
+
+    if args.raw:
+        cmd = ["rm"] + unknown + args.files
+        os.execvp("rm", cmd)
 
     trash_dir = sdk.get_home().joinpath(".safe_trash")
     if not os.path.exists(trash_dir):

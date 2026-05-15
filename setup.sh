@@ -69,7 +69,7 @@ ensure_uv() {
     fi
 
     echo "Downloading uv..." >&2
-    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$UV_DIR" sh >&2
+    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$UV_DIR" INSTALLER_NO_MODIFY_PATH=1 sh >&2
     echo "$uv_bin"
 }
 
