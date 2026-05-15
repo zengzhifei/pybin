@@ -105,6 +105,7 @@ create_venv() {
     done
 
     echo "Reinstalling pip..."
+    rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
     $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
 
     fix_paths
@@ -133,7 +134,7 @@ main() {
 
     if [ "$INSTALL" = true ]; then
         echo "Installing pybin..."
-        "$VENV_DIR/bin/python" "$SCRIPT_DIR/install.py"
+        "$VENV_DIR/bin/python" "$SCRIPT_DIR/pybin/install.py"
     fi
     echo "Done."
 }

@@ -46,6 +46,7 @@ def pybin():
     group.add_argument("-r", "--rc", action="store_true", help="show rc config")
     group.add_argument("--history", action="store_true", help="show cmd run history")
     group.add_argument("--uninstall", action="store_true", help="uninstall pybin")
+    group.add_argument("--where", action="store_true", help="show pybin src path")
     parser.add_argument("--head", type=int, help="show history head")
     parser.add_argument("--tail", type=int, help="show history tail")
     parser.add_argument("--grep", type=str, help="show history grep")
@@ -114,10 +115,22 @@ def pybin():
                 print(f"Removed from: {profile}")
 
         shutil.rmtree(str(py_profile.parent), ignore_errors=True)
+
+        source_path = os.environ.get("PYBIN_SOURCE_PATH")
+        if source_path:
+            project_root = os.path.dirname(source_path)
+            for d in [".python", ".venv", "build", ".uv", "pybin.egg-info"]:
+                shutil.rmtree(os.path.join(project_root, d), ignore_errors=True)
+
         print("Uninstalled.")
         return
 
-    if not args.version and not args.author and not args.function and not args.python:
+    if args.where:
+        print(os.environ.get("PYBIN_SOURCE_PATH"))
+        print(os.environ.get("PYBIN_RUNTIME_PATH"))
+        return
+
+    if not args.version and not args.author and not args.function:
         args.version = args.author = args.function = True
 
     headers = []

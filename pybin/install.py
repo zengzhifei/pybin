@@ -53,7 +53,7 @@ def install_bin(args):
     mode |= stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
 
     for file_name in ["sdk.py", "ann.py", "cli.py", "__about__.py"]:
-        shutil.copy(current_path.joinpath("pybin", file_name), root_path)
+        shutil.copy(current_path.joinpath(file_name), root_path)
 
     cli_path = root_path.joinpath("cli.py")
     content = cli_path.read_text()
