@@ -97,6 +97,13 @@ create_venv() {
     echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
     $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
+
+    for link in "$VENV_DIR"/bin/python*; do
+        [ -L "$link" ] || continue
+        rm -f "$link"
+        ln -sf "../../.python/bin/python3" "$link"
+    done
+
     fix_paths
 }
 

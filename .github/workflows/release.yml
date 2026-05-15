@@ -33,7 +33,7 @@ jobs:
       - name: Package
         run: |
           mkdir -p pkg/pybin && \
-          tar c --exclude='.git' --exclude='__pycache__' --exclude='.uv' --exclude='build' --exclude='./pkg' . | tar x -C pkg/pybin && \
+          tar c --exclude='.git' --exclude='.github' --exclude='__pycache__' --exclude='.uv' --exclude='build' --exclude='./pkg' --exclude='.DS_Store' . | tar x -C pkg/pybin && \
           tar czf "pybin-${{ matrix.triple }}.tar.gz" -C pkg pybin && \
           rm -rf pkg
 
