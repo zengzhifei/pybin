@@ -108,11 +108,23 @@ create_venv() {
         echo "Using musl python: $musl_python" >&2
         "$musl_python" -m venv --without-pip "$VENV_DIR"
 
-        # Copy musl Python to .python/
+        # Copy musl Python to .python/ and create wrapper
         rm -rf "$PYTHON_DIR"
-        mkdir -p "$PYTHON_DIR"
+        mkdir -p "$PYTHON_DIR" "$PYTHON_DIR/bin"
         echo "Copying Python to $PYTHON_DIR..."
-        cp -R "$_MUSL_PYTHON_HOME"/. "$PYTHON_DIR/"
+        cp -R "$_MUSL_PYTHON_HOME"/lib "$PYTHON_DIR/"
+        cp "$_MUSL_PYTHON_HOME/bin/python3.12" "$PYTHON_DIR/bin/"
+        # Create a shell wrapper as python3 that invokes musl Python through its own ld-linux
+        cat > "$PYTHON_DIR/bin/python3" << 'PYWRAP'
+#!/bin/sh
+here="$(cd "$(dirname "$0")" && pwd)"
+musl_ld="$here/../lib/ld-musl-x86_64.so.1"
+if [ -f "$musl_ld" ]; then
+    exec "$musl_ld" --library-path "$here/../lib" "$here/python3.12" "$@"
+fi
+exec "$here/python3.12" "$@"
+PYWRAP
+        chmod +x "$PYTHON_DIR/bin/python3"
         unset _MUSL_PYTHON_HOME
     else
         $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
