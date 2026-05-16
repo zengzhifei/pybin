@@ -1,5 +1,5 @@
 __name__ = "pybin"
-__version__ = "1.0.14"
+__version__ = "1.0.15"
 __author__ = "zengzhifei"
 __author_email__ = "zengzhifei@outlook.com"
 __doc__ = "A tool SDK and CLI provided for the Python command line"

@@ -84,6 +84,7 @@ setup_python() {
         # Linux: install musl-linked Python for maximum portability
         $uv_cmd python install "cpython-${PYTHON_VERSION}-linux-x86_64-musl"
         _MUSL_PYTHON_HOME="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-linux-x86_64-musl"
+        echo "MUSL_PYTHON_HOME=$_MUSL_PYTHON_HOME" >&2
     else
         $uv_cmd python install "$PYTHON_VERSION"
     fi
@@ -92,7 +93,7 @@ setup_python() {
 create_venv() {
     local uv_cmd="$1"
 
-    echo "Creating virtual environment..."
+    echo "Creating virtual environment... (musl=${_MUSL_PYTHON_HOME:-empty})"
     rm -rf "$VENV_DIR"
 
     if [ -n "${_MUSL_PYTHON_HOME:-}" ]; then
