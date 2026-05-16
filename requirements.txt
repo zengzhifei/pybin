@@ -1,8 +1,10 @@
 psutil>=5.0
 requests>=2.20
+urllib3<2
 setproctitle>=1.0
 cryptography>=3.0
-pandas>=1.0
+pandas>=1.0; python_version<'3.9'
+pandas>=2.0; python_version>='3.9'
 humanize>=3.0
 colorama>=0.4
 sqlglot>=11.0
