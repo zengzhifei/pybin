@@ -79,31 +79,54 @@ ensure_uv() {
 setup_python() {
     local uv_cmd="$1"
 
-    if [ "$(uname -s)" = "Linux" ] && [ -n "${MINICONDA_PLATFORM:-}" ]; then
-        echo "Installing Miniconda (Linux portable Python)..."
-        local mc_url="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+    echo "Installing Python $PYTHON_VERSION..."
+    if [ "$(uname -s)" = "Linux" ]; then
+        # Linux: install musl-linked Python for maximum portability
+        $uv_cmd python install "cpython-${PYTHON_VERSION}-linux-x86_64-musl"
+        _MUSL_PYTHON_HOME="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-linux-x86_64-musl"
+    else
+        $uv_cmd python install "$PYTHON_VERSION"
+    fi
+}
+
+create_venv() {
+    local uv_cmd="$1"
+
+    echo "Creating virtual environment..."
+    rm -rf "$VENV_DIR"
+
+    if [ -n "${_MUSL_PYTHON_HOME:-}" ]; then
+        # Musl Python: use stdlib venv (uv venv rejects musl binaries)
+        local musl_python="$_MUSL_PYTHON_HOME/bin/python3.12"
+        echo "Using musl python: $musl_python" >&2
+        "$musl_python" -m venv --without-pip "$VENV_DIR"
+
+        # Copy musl Python to .python/
         rm -rf "$PYTHON_DIR"
-        curl -LsSf --connect-timeout 10 --max-time 120 "$mc_url" -o /tmp/miniconda.sh
-        bash /tmp/miniconda.sh -b -p "$PYTHON_DIR"
-        rm -f /tmp/miniconda.sh
-        _PYTHON_SRC="$PYTHON_DIR"
-        return
+        mkdir -p "$PYTHON_DIR"
+        echo "Copying Python to $PYTHON_DIR..."
+        cp -R "$_MUSL_PYTHON_HOME"/. "$PYTHON_DIR/"
+        unset _MUSL_PYTHON_HOME
+    else
+        $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
     fi
 
-    echo "Installing Python $PYTHON_VERSION..."
-    $uv_cmd python install "$PYTHON_VERSION"
+    for link in "$VENV_DIR"/bin/python*; do
+        [ -L "$link" ] || continue
+        rm -f "$link"
+        ln -sf "../../.python/bin/python3" "$link"
+    done
 
-    local python_bin python_home
-    python_bin=$($uv_cmd python find "$PYTHON_VERSION")
-    python_home="$(dirname "$(dirname "$python_bin")")"
+    echo "Reinstalling pip..."
+    rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
+    if [ "$(uname -s)" = "Linux" ]; then
+        "$VENV_DIR/bin/python" -m ensurepip
+        "$VENV_DIR/bin/python" -m pip install --upgrade pip setuptools wheel -q
+    else
+        $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
+    fi
 
-    echo "Found python: $python_home" >&2
-
-    rm -rf "$PYTHON_DIR"
-    mkdir -p "$PYTHON_DIR"
-
-    echo "Copying Python to $PYTHON_DIR..."
-    cp -R "$python_home"/. "$PYTHON_DIR/"
+    fix_paths
 }
 
 create_venv() {
