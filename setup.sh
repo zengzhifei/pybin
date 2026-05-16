@@ -32,8 +32,10 @@ for arg in "$@"; do
 done
 
 fix_paths() {
-    local home="$PYTHON_DIR/bin"
-    local executable="$PYTHON_DIR/bin/python3"
+    local executable
+    executable="$(realpath "$PYTHON_DIR/bin/python3")"
+    local home
+    home="$(dirname "$(dirname "$executable")")"
     local cfg="$VENV_DIR/pyvenv.cfg"
     if [ "$(uname -s)" = "Darwin" ]; then
         sed -i '' "s|^home = .*|home = $home|" "$cfg"
@@ -87,17 +89,13 @@ setup_python() {
         $uv_cmd python install "cpython-${PYTHON_VERSION}-${uv_target}"
         local python_home
         python_home="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-${uv_target}"
-        python_bin="$python_home/bin/python3"
     else
         $uv_cmd python install "$PYTHON_VERSION"
-        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
         local python_home
-        python_home="$(dirname "$(dirname "$python_bin")")"
-        python_bin="$PYTHON_DIR/bin/python3"
+        python_home="$(dirname "$(dirname "$($uv_cmd python find "$PYTHON_VERSION")")")"
     fi
 
-    echo "Found python: $python_bin" >&2
-    file "$python_bin" >&2
+    echo "Found python: $python_home/bin/python3" >&2
 
     rm -rf "$PYTHON_DIR"
     mkdir -p "$PYTHON_DIR"
@@ -109,14 +107,19 @@ setup_python() {
 create_venv() {
     local uv_cmd="$1"
 
+    # Resolve python3 path (musl builds may have python3 -> python3.12 symlink)
+    local python_exe
+    python_exe="$(realpath "$PYTHON_DIR/bin/python3")"
+    echo "Using python: $python_exe" >&2
+
     echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
-    $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
+    $uv_cmd venv "$VENV_DIR" --seed --python "$python_exe"
 
     for link in "$VENV_DIR"/bin/python*; do
         [ -L "$link" ] || continue
         rm -f "$link"
-        ln -sf "../../.python/bin/python3" "$link"
+        ln -sf "$python_exe" "$link"
     done
 
     echo "Reinstalling pip..."
