@@ -69,7 +69,10 @@ ensure_uv() {
     fi
 
     echo "Downloading uv..." >&2
-    curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$UV_DIR" INSTALLER_NO_MODIFY_PATH=1 sh >&2
+    if ! curl -LsSf --connect-timeout 10 --max-time 30 https://astral.sh/uv/install.sh | env UV_INSTALL_DIR="$UV_DIR" INSTALLER_NO_MODIFY_PATH=1 sh >&2; then
+        echo "Error: Failed to download uv. Check your network connection." >&2
+        exit 1
+    fi
     echo "$uv_bin"
 }
 

@@ -2,6 +2,7 @@ import argparse
 import ast
 import hashlib
 import importlib
+import importlib.util
 import inspect
 import ipaddress
 import json
@@ -29,16 +30,6 @@ from pathlib import Path
 from subprocess import Popen
 from typing import Type, AnyStr, List, Any, Dict, Optional, Callable, Tuple
 
-import psutil
-import requests
-import setproctitle
-import sqlglot
-from colorama import Fore, Style
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from requests import Response
-from sqlglot import expressions as exp
-
 try:
     from .ann import RuntimeKey, RuntimeMode, RuntimeEnv
 except ImportError:
@@ -51,6 +42,9 @@ def handle_exception_hook(ex: Type, value: str, trace):
         traceback.print_exception(ex, value, trace)
     else:
         print(f"{ex.__name__}: {value}")
+
+    if ex is ModuleNotFoundError:
+        print(f"Hint: install the missing package with: pip install {value.name}")
 
 
 def get_home() -> Path:
@@ -153,7 +147,8 @@ def modify_file_by_patten(filepath: str, pattern: str, replace: Callable[[str], 
             file.write(line)
 
 
-def upload_file(url: str, file_path: str) -> Response:
+def upload_file(url: str, file_path: str) -> Any:
+    import requests
     with open(file_path, 'rb') as f:
         files = {'file': f}
         response = requests.post(url, files=files)
@@ -494,7 +489,8 @@ def align_columns(input_text: str) -> str:
         return process.stdout
 
 
-def iterate_process(condition: Callable[[str], bool], callback: Callable[[str, psutil.Process], None]) -> None:
+def iterate_process(condition: Callable[[str], bool], callback: Callable[[str, Any], None]) -> None:
+    import psutil
     uid = os.getuid()
     current_pid = os.getpid()
     for proc in psutil.process_iter([]):
@@ -594,6 +590,8 @@ def send_email(smtp_server: str, smtp_port: int, smtp_user: str, smtp_password: 
 
 
 def aes_encrypt(content: bytes, key: str) -> bytes:
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
     nonce = os.urandom(12)
     cipher = Cipher(algorithms.AES(hashlib.sha256(key.encode()).digest()), modes.GCM(nonce), backend=default_backend())
     encryptor = cipher.encryptor()
@@ -602,6 +600,8 @@ def aes_encrypt(content: bytes, key: str) -> bytes:
 
 
 def aes_decrypt(data: bytes, key: str) -> bytes:
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
     nonce = data[:12]
     tag = data[12:28]
     ciphertext = data[28:]
@@ -626,6 +626,7 @@ def get_file_md5(file_path: str) -> str:
 
 
 def basic_auth(username: str, password: str) -> str:
+    import requests
     return requests.auth._basic_auth_str(username, password)
 
 
@@ -633,8 +634,13 @@ def get_display_width(text: str) -> int:
     return sum(2 if unicodedata.east_asian_width(c) in ('F', 'W') else 1 for c in text)
 
 
-def beautify_separator_line(separator: str = '-', color: str = Fore.CYAN, text: str = None,
-                            text_color: str = Fore.CYAN) -> str:
+def beautify_separator_line(separator: str = '-', color: Any = None, text: str = None,
+                            text_color: Any = None) -> str:
+    from colorama import Fore, Style
+    if color is None:
+        color = Fore.CYAN
+    if text_color is None:
+        text_color = Fore.CYAN
     columns = shutil.get_terminal_size().columns
 
     if text:
@@ -686,10 +692,7 @@ def get_module_funcs(py_path: str) -> dict:
         if env == RuntimeEnv.NONE.value:
             continue
 
-        functions = {} if env not in funcs_map else funcs_map[env]
-        functions[name] = item
-
-        funcs_map[env] = functions
+        funcs_map.setdefault(env, {})[name] = item
 
     return funcs_map
 
@@ -769,6 +772,7 @@ class HttpServer:
 
     def _run(self):
         if self.name is not None:
+            import setproctitle
             setproctitle.setproctitle(self.name)
 
         if self.request_handler_class is not None:
@@ -837,6 +841,9 @@ class HttpServer:
 
 class Sql2EsConverter:
     def __init__(self, sql: str):
+        import sqlglot
+        from sqlglot import expressions as _exp
+        self._exp = _exp
         self.__index = None
         self.__sql = sql
         self.__ast = sqlglot.parse_one(sql)
@@ -852,11 +859,11 @@ class Sql2EsConverter:
         self.__dsl = {}
 
         # support (select) subquery
-        if isinstance(self.__ast, exp.Subquery):
+        if isinstance(self.__ast, self._exp.Subquery):
             self.__ast = self.__ast.this
 
         # only support select statements
-        if not isinstance(self.__ast, exp.Select):
+        if not isinstance(self.__ast, self._exp.Select):
             raise ValueError("Only SELECT statements are supported")
 
         # select
@@ -865,7 +872,7 @@ class Sql2EsConverter:
             self.__dsl["_source"] = fields
 
         # table
-        table = self.__ast.find(exp.Table)
+        table = self.__ast.find(self._exp.Table)
         if table:
             self.__index = table.name
 
@@ -897,16 +904,16 @@ class Sql2EsConverter:
         fields = []
         for expression in expressions:
             # select *
-            if isinstance(expression, exp.Star):
+            if isinstance(expression, self._exp.Star):
                 return []
             # select count(*)
-            elif isinstance(expression, exp.Count):
+            elif isinstance(expression, self._exp.Count):
                 self.__dsl['size'] = 0
             # select field
-            elif isinstance(expression, exp.Column):
+            elif isinstance(expression, self._exp.Column):
                 fields.append(expression.name)
             # select alias
-            elif isinstance(expression, exp.Alias) and isinstance(expression.this, exp.Column):
+            elif isinstance(expression, self._exp.Alias) and isinstance(expression.this, self._exp.Column):
                 fields.append(expression.this.name)
 
         return fields
@@ -919,10 +926,10 @@ class Sql2EsConverter:
             return {"bool": {"filter": [dsl]}}
 
     def __parse_where_expr(self, expr):
-        if isinstance(expr, exp.Paren):
+        if isinstance(expr, self._exp.Paren):
             return self.__parse_where_expr(expr.this)
 
-        elif isinstance(expr, exp.And):
+        elif isinstance(expr, self._exp.And):
             filters = []
             for side in [expr.left, expr.right]:
                 parsed_side = self.__parse_where_expr(side)
@@ -932,7 +939,7 @@ class Sql2EsConverter:
                     filters.append(parsed_side)
             return {"bool": {"filter": filters}} if len(filters) > 1 else filters[0]
 
-        elif isinstance(expr, exp.Or):
+        elif isinstance(expr, self._exp.Or):
             shoulds = []
             for side in [expr.left, expr.right]:
                 parsed_side = self.__parse_where_expr(side)
@@ -942,11 +949,11 @@ class Sql2EsConverter:
                     shoulds.append(parsed_side)
             return {"bool": {"should": shoulds}} if len(shoulds) > 1 else shoulds[0]
 
-        elif isinstance(expr, exp.Not):
+        elif isinstance(expr, self._exp.Not):
             inner = self.__parse_where_expr(expr.this)
             return {"bool": {"must_not": inner}}
 
-        elif isinstance(expr, exp.EQ):
+        elif isinstance(expr, self._exp.EQ):
             field = expr.left.name
             value = expr.right.this if hasattr(expr.right, "this") else expr.right
             if "." in field:
@@ -955,28 +962,28 @@ class Sql2EsConverter:
             else:
                 return {"term": {field: value}}
 
-        elif isinstance(expr, exp.NEQ):
+        elif isinstance(expr, self._exp.NEQ):
             field = expr.left.name
             value = expr.right.this if hasattr(expr.right, "this") else expr.right
             return {"bool": {"must_not": {"term": {field: value}}}}
 
-        elif isinstance(expr, (exp.GT, exp.GTE, exp.LT, exp.LTE)):
+        elif isinstance(expr, (self._exp.GT, self._exp.GTE, self._exp.LT, self._exp.LTE)):
             field = expr.left.name
             value = expr.right.this if hasattr(expr.right, "this") else expr.right
-            op_map = {exp.GT: "gt", exp.GTE: "gte", exp.LT: "lt", exp.LTE: "lte"}
+            op_map = {self._exp.GT: "gt", self._exp.GTE: "gte", self._exp.LT: "lt", self._exp.LTE: "lte"}
             return {"range": {field: {op_map[type(expr)]: value}}}
 
-        elif isinstance(expr, exp.In):
+        elif isinstance(expr, self._exp.In):
             field = expr.this.name
             values = [v.this for v in expr.expressions]
             return {"terms": {field: values}}
 
-        elif isinstance(expr, exp.NotIn):
+        elif isinstance(expr, self._exp.NotIn):
             field = expr.this.name
             values = [v.this for v in expr.expressions]
             return {"bool": {"must_not": {"terms": {field: values}}}}
 
-        elif isinstance(expr, exp.Like):
+        elif isinstance(expr, self._exp.Like):
             field = expr.this.name
             value = expr.expression.this.replace("%", "*")
             return {"wildcard": {field: value}}
@@ -996,22 +1003,22 @@ class Sql2EsConverter:
         root_key = list(current_level.keys())[0]
 
         for expression in self.__ast.expressions:
-            if isinstance(expression, exp.Count):
+            if isinstance(expression, self._exp.Count):
                 current_level[root_key]["aggs"]["count_value"] = {"value_count": {"field": "_id"}}
 
-            elif isinstance(expression, exp.Sum):
+            elif isinstance(expression, self._exp.Sum):
                 field = expression.this.name
                 current_level[root_key]["aggs"][f"sum_{field}"] = {"sum": {"field": field}}
 
-            elif isinstance(expression, exp.Avg):
+            elif isinstance(expression, self._exp.Avg):
                 field = expression.this.name
                 current_level[root_key]["aggs"][f"avg_{field}"] = {"avg": {"field": field}}
 
-            elif isinstance(expression, exp.Min):
+            elif isinstance(expression, self._exp.Min):
                 field = expression.this.name
                 current_level[root_key]["aggs"][f"min_{field}"] = {"min": {"field": field}}
 
-            elif isinstance(expression, exp.Max):
+            elif isinstance(expression, self._exp.Max):
                 field = expression.this.name
                 current_level[root_key]["aggs"][f"max_{field}"] = {"max": {"field": field}}
 

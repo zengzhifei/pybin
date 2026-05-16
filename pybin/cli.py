@@ -44,9 +44,9 @@ def pybin():
     group.add_argument("-c", "--config", type=str, nargs="+", help="show config")
     group.add_argument("-p", "--python", action="store_true", help="show python info")
     group.add_argument("-r", "--rc", action="store_true", help="show rc config")
-    group.add_argument("--history", action="store_true", help="show cmd run history")
     group.add_argument("--uninstall", action="store_true", help="uninstall pybin")
     group.add_argument("--where", action="store_true", help="show pybin src path")
+    group.add_argument("--history", action="store_true", help="show cmd run history")
     parser.add_argument("--head", type=int, help="show history head")
     parser.add_argument("--tail", type=int, help="show history tail")
     parser.add_argument("--grep", type=str, help="show history grep")
@@ -71,8 +71,8 @@ def pybin():
     if args.rc:
         rcs = sdk.get_config('default_rc', default_value={})
         sdk.merge_two_levels_dict(rcs, sdk.get_config('rc', default_value={}))
-        py_rc = os.path.join(os.environ.get("PYBIN_RUNTIME_PATH"), "pybinrc")
-        configured_rc = sdk.read_file(py_rc)
+        py_profile = os.path.join(os.environ.get("PYBIN_RUNTIME_PATH"), "pybin_profile")
+        configured_rc = sdk.read_file(py_profile)
 
         rows = []
         for rc_name, rc_value in rcs.items():
