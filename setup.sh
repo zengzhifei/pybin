@@ -120,9 +120,22 @@ setup_python() {
 
     echo "Installing Python $PYTHON_VERSION..."
     $uv_cmd python install "$PYTHON_VERSION"
-    local python_bin python_home
-    python_bin=$($uv_cmd python find "$PYTHON_VERSION")
-    python_home="$(dirname "$(dirname "$python_bin")")"
+
+    # Use uv python dir to find the managed Python installation (not a venv).
+    # Must filter by platform — uv may cache multiple platforms locally.
+    local uv_python_dir python_home platform
+    uv_python_dir=$($uv_cmd python dir)
+    case "$(uname -s)" in
+        Darwin) platform="macos" ;;
+        Linux)  platform="linux" ;;
+    esac
+    python_home=$(ls -d "$uv_python_dir/cpython-${PYTHON_VERSION}-${platform}-"* 2>/dev/null | head -1)
+
+    if [ -z "$python_home" ]; then
+        echo "Error: Could not find managed Python $PYTHON_VERSION for $platform in $uv_python_dir" >&2
+        exit 1
+    fi
+
     rm -rf "$PYTHON_DIR"
     mkdir -p "$PYTHON_DIR"
     echo "Copying Python to $PYTHON_DIR..."
