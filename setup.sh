@@ -77,37 +77,29 @@ check_ready() {
         return 1
     fi
 
-    # If venv Python works, we're ready
-    if [ -x "$VENV_DIR/bin/python" ]; then
-        if ! "$VENV_DIR/bin/python" -c "" 2>/dev/null; then
-            echo "Bundled Python not compatible with this system, rebuilding..."
-            return 1
-        fi
-        if [ -L "$VENV_DIR/bin/python" ]; then
-            case "$(readlink "$VENV_DIR/bin/python")" in
-                *".python/bin/python3"*) fix_paths ;;
-            esac
-        fi
-        return 0
-    fi
-
-    # Venv python is a broken symlink but bundled Python exists — fix symlinks
-    if [ -x "$PYTHON_DIR/bin/python3" ] && [ -L "$VENV_DIR/bin/python" ]; then
+    # Fix up a bundled-Python venv so it's portable (symlinks + pyvenv.cfg).
+    # Then test if it actually works. Only rebuild if it's genuinely broken.
+    if [ -L "$VENV_DIR/bin/python" ]; then
         case "$(readlink "$VENV_DIR/bin/python")" in
             *".python/bin/python3"*)
+                # Replace any absolute/broken symlinks with relative ones
                 for link in "$VENV_DIR"/bin/python*; do
                     [ -L "$link" ] || continue
                     rm -f "$link"
                     ln -sf "../../.python/bin/python3" "$link"
                 done
+                # Fix pyvenv.cfg (may have CI-runner paths from the build machine)
                 fix_paths
-                if "$VENV_DIR/bin/python" -c "" 2>/dev/null; then
-                    return 0
-                fi
-                echo "Bundled Python not compatible with this system, rebuilding..."
-                return 1
                 ;;
         esac
+    fi
+
+    if [ -x "$VENV_DIR/bin/python" ]; then
+        if "$VENV_DIR/bin/python" -c "" 2>/dev/null; then
+            return 0
+        fi
+        echo "Bundled Python not compatible with this system, rebuilding..."
+        return 1
     fi
 
     return 1
