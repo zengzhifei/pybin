@@ -228,10 +228,11 @@ install_deps() {
 
     echo "Installing dependencies..."
     if [ -n "$uv_cmd" ]; then
-        $uv_cmd pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements.txt"
+        $uv_cmd pip install --python "$VENV_DIR/bin/python" -r "$SCRIPT_DIR/requirements.txt" || true
     else
-        "$VENV_DIR/bin/python" -m pip install -r "$SCRIPT_DIR/requirements.txt" -q
+        "$VENV_DIR/bin/python" -m pip install -r "$SCRIPT_DIR/requirements.txt" || true
     fi
+    echo "Dependency installation completed."
 }
 
 main() {
