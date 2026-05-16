@@ -80,21 +80,31 @@ setup_python() {
     local uv_cmd="$1"
 
     echo "Installing Python $PYTHON_VERSION..."
-    $uv_cmd python install "$PYTHON_VERSION"
+    if [ -n "${UV_PYTHON_PLATFORM:-}" ]; then
+        # Cross-platform: download standalone Python from astral-sh fork
+        local release_tag
+        release_tag=$(curl -sSf https://api.github.com/repos/astral-sh/python-build-standalone/releases/latest | grep '"tag_name"' | head -1 | sed 's/.*"tag_name": "\(.*\)".*/\1/')
+        local dl_url="https://github.com/astral-sh/python-build-standalone/releases/download/${release_tag}/cpython-${PYTHON_VERSION}+${release_tag}-${UV_PYTHON_PLATFORM}-install_only.tar.gz"
+        echo "Downloading Python for $UV_PYTHON_PLATFORM..." >&2
+        rm -rf "$PYTHON_DIR"
+        mkdir -p "$PYTHON_DIR"
+        curl -LsSf "$dl_url" | tar xz -C "$PYTHON_DIR" --strip-components=1
+        python_bin="$PYTHON_DIR/bin/python3"
+    else
+        $uv_cmd python install "$PYTHON_VERSION"
+        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+        local python_home
+        python_home="$(dirname "$(dirname "$python_bin")")"
 
-    local python_bin
-    python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+        rm -rf "$PYTHON_DIR"
+        mkdir -p "$PYTHON_DIR"
+
+        echo "Copying Python to $PYTHON_DIR..."
+        cp -R "$python_home"/. "$PYTHON_DIR/"
+        python_bin="$PYTHON_DIR/bin/python3"
+    fi
     echo "Found python: $python_bin" >&2
     file "$python_bin" >&2
-
-    local python_home
-    python_home="$(dirname "$(dirname "$python_bin")")"
-
-    rm -rf "$PYTHON_DIR"
-    mkdir -p "$PYTHON_DIR"
-
-    echo "Copying Python to $PYTHON_DIR..."
-    cp -R "$python_home"/. "$PYTHON_DIR/"
 }
 
 create_venv() {
