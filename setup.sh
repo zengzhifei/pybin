@@ -84,7 +84,6 @@ setup_python() {
         # Linux: install musl-linked Python for maximum portability
         $uv_cmd python install "cpython-${PYTHON_VERSION}-linux-x86_64-musl"
         _MUSL_PYTHON_HOME="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-linux-x86_64-musl"
-        echo "MUSL_PYTHON_HOME=$_MUSL_PYTHON_HOME" >&2
     else
         $uv_cmd python install "$PYTHON_VERSION"
     fi
@@ -93,7 +92,7 @@ setup_python() {
 create_venv() {
     local uv_cmd="$1"
 
-    echo "Creating virtual environment... (musl=${_MUSL_PYTHON_HOME:-empty})"
+    echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
 
     if [ -n "${_MUSL_PYTHON_HOME:-}" ]; then
@@ -126,26 +125,6 @@ create_venv() {
     else
         $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
     fi
-
-    fix_paths
-}
-
-create_venv() {
-    local uv_cmd="$1"
-
-    echo "Creating virtual environment..."
-    rm -rf "$VENV_DIR"
-    $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
-
-    for link in "$VENV_DIR"/bin/python*; do
-        [ -L "$link" ] || continue
-        rm -f "$link"
-        ln -sf "../../.python/bin/python3" "$link"
-    done
-
-    echo "Reinstalling pip..."
-    rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
-    $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
 
     fix_paths
 }
