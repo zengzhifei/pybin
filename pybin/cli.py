@@ -130,7 +130,11 @@ def pybin():
         print(os.environ.get("PYBIN_RUNTIME_PATH"))
         return
 
-    if not args.version and not args.author and not args.function:
+    if args.python and not (args.version or args.author or args.function):
+        print(f"{sys.executable}  ({sys.version.split()[0]})")
+        return
+
+    if not any([args.version, args.author, args.function]):
         args.version = args.author = args.function = True
 
     headers = []
@@ -141,9 +145,6 @@ def pybin():
     if args.author:
         headers.append("author")
         rows.append(__author__)
-    if args.python:
-        headers.append("python")
-        rows.append(f"{sys.executable}  ({sys.version.split()[0]})")
     if args.function:
         clis = os.environ.get("PYBIN_CLIS").split(";")
         for cli in clis:

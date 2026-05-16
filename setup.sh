@@ -138,6 +138,7 @@ main() {
     if [ "$INSTALL" = true ]; then
         echo "Installing pybin..."
         "$VENV_DIR/bin/python" "$SCRIPT_DIR/pybin/install.py"
+        source "$HOME/.pybin/pybin_profile"
     fi
     echo "Done."
 }
