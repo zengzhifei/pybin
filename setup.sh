@@ -32,10 +32,8 @@ for arg in "$@"; do
 done
 
 fix_paths() {
-    local executable
-    executable="$(realpath "$PYTHON_DIR/bin/python3")"
-    local home
-    home="$(dirname "$(dirname "$executable")")"
+    local home="$PYTHON_DIR/bin"
+    local executable="$PYTHON_DIR/bin/python3"
     local cfg="$VENV_DIR/pyvenv.cfg"
     if [ "$(uname -s)" = "Darwin" ]; then
         sed -i '' "s|^home = .*|home = $home|" "$cfg"
@@ -82,20 +80,18 @@ setup_python() {
     local uv_cmd="$1"
 
     echo "Installing Python $PYTHON_VERSION..."
-    if [ -n "${UV_PYTHON_PLATFORM:-}" ]; then
-        # Cross-platform: e.g. "x86_64-unknown-linux-musl" -> "linux-x86_64-musl"
-        local uv_target
-        uv_target=$(echo "$UV_PYTHON_PLATFORM" | sed 's/x86_64-unknown-linux/linux-x86_64/')
-        $uv_cmd python install "cpython-${PYTHON_VERSION}-${uv_target}"
-        local python_home
-        python_home="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-${uv_target}"
+    $uv_cmd python install "$PYTHON_VERSION"
+
+    local python_bin python_home
+    # Target format like "cpython-3.12.9-linux-x86_64-musl" won't be found by `find`
+    if echo "$PYTHON_VERSION" | grep -q '^cpython-'; then
+        python_home="$("$uv_cmd" python dir)/$PYTHON_VERSION"
     else
-        $uv_cmd python install "$PYTHON_VERSION"
-        local python_home
-        python_home="$(dirname "$(dirname "$($uv_cmd python find "$PYTHON_VERSION")")")"
+        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+        python_home="$(dirname "$(dirname "$python_bin")")"
     fi
 
-    echo "Found python: $python_home/bin/python3" >&2
+    echo "Found python: $python_home" >&2
 
     rm -rf "$PYTHON_DIR"
     mkdir -p "$PYTHON_DIR"
@@ -107,19 +103,14 @@ setup_python() {
 create_venv() {
     local uv_cmd="$1"
 
-    # Resolve python3 path (musl builds may have python3 -> python3.12 symlink)
-    local python_exe
-    python_exe="$(realpath "$PYTHON_DIR/bin/python3")"
-    echo "Using python: $python_exe" >&2
-
     echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
-    $uv_cmd venv "$VENV_DIR" --seed --python "$python_exe"
+    $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
 
     for link in "$VENV_DIR"/bin/python*; do
         [ -L "$link" ] || continue
         rm -f "$link"
-        ln -sf "$python_exe" "$link"
+        ln -sf "../../.python/bin/python3" "$link"
     done
 
     echo "Reinstalling pip..."
