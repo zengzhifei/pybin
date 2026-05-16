@@ -736,8 +736,8 @@ def get_module_funcs_by_ast(py_path: str) -> dict:
             for kw in dec.keywords:
                 if kw.arg == 'env' and isinstance(kw.value, ast.Attribute):
                     env = _ENV_BY_ATTR.get(kw.value.attr, env)
-                elif kw.arg == 'shell_exit_code' and isinstance(kw.value, ast.Constant):
-                    exit_code = kw.value.value
+                elif kw.arg == 'shell_exit_code':
+                    exit_code = ast.literal_eval(kw.value)
 
         funcs_map.setdefault(env, {})[node.name] = _FuncMeta(exit_code)
 
