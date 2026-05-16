@@ -64,7 +64,7 @@ def install_commands(cli_path: Path, runtime_dir: Path, shell_lines: list, insta
     For built-ins, cli_path is runtime_dir/cli.py (symlinks point there).
     For extensions, cli_path is the original extension path (symlinks point there directly).
     """
-    funcs_map = sdk.get_module_funcs(str(cli_path))
+    funcs_map = sdk.get_module_funcs_by_ast(str(cli_path))
 
     for name, func in funcs_map.get(RuntimeEnv.PYTHON.value, {}).items():
         symlink = runtime_dir / name

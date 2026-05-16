@@ -697,6 +697,53 @@ def get_module_funcs(py_path: str) -> dict:
     return funcs_map
 
 
+def get_module_funcs_by_ast(py_path: str) -> dict:
+    """Discover @runtime-decorated functions via AST, without importing the module.
+
+    Returns a dict like ``get_module_funcs`` would, but function values are stubs
+    carrying only ``exit_code`` — enough for install-time metadata.
+    """
+    import ast
+
+    _ENV_BY_ATTR = {
+        RuntimeEnv.PYTHON.name: RuntimeEnv.PYTHON.value,
+        RuntimeEnv.SHELL.name: RuntimeEnv.SHELL.value,
+    }
+
+    class _FuncMeta:
+        __slots__ = ('exit_code',)
+
+        def __init__(self, exit_code: int = 0):
+            self.exit_code = exit_code
+
+    funcs_map: dict = {}
+    with open(py_path) as f:
+        tree = ast.parse(f.read())
+
+    for node in ast.iter_child_nodes(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+
+        env = RuntimeEnv.PYTHON.value
+        exit_code = 0
+
+        for dec in node.decorator_list:
+            if not isinstance(dec, ast.Call):
+                continue
+            if not (isinstance(dec.func, ast.Name) and dec.func.id == 'runtime'):
+                continue
+
+            for kw in dec.keywords:
+                if kw.arg == 'env' and isinstance(kw.value, ast.Attribute):
+                    env = _ENV_BY_ATTR.get(kw.value.attr, env)
+                elif kw.arg == 'shell_exit_code' and isinstance(kw.value, ast.Constant):
+                    exit_code = kw.value.value
+
+        funcs_map.setdefault(env, {})[node.name] = _FuncMeta(exit_code)
+
+    return funcs_map
+
+
 def get_path_parent_by_level(path: str, level: int) -> Tuple[Optional[str], Optional[str]]:
     p = Path(path).absolute()
 
