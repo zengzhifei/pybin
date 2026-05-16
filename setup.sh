@@ -86,6 +86,13 @@ setup_python() {
         _MUSL_PYTHON_HOME="$("$uv_cmd" python dir)/cpython-${PYTHON_VERSION}-linux-x86_64-musl"
     else
         $uv_cmd python install "$PYTHON_VERSION"
+        local python_bin python_home
+        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+        python_home="$(dirname "$(dirname "$python_bin")")"
+        rm -rf "$PYTHON_DIR"
+        mkdir -p "$PYTHON_DIR"
+        echo "Copying Python to $PYTHON_DIR..."
+        cp -R "$python_home"/. "$PYTHON_DIR/"
     fi
 }
 
