@@ -26,7 +26,11 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Setup environment
-        run: ./setup.sh --env-only
+        run: |
+          if [ "$(uname -s)" = "Linux" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq musl musl-tools
+          fi
+          ./setup.sh --env-only
 
       - name: Package
         run: |
