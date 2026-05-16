@@ -92,12 +92,7 @@ setup_python() {
     fi
 
     echo "Found python: $python_home" >&2
-
-    rm -rf "$PYTHON_DIR"
-    mkdir -p "$PYTHON_DIR"
-
-    echo "Copying Python to $PYTHON_DIR..."
-    cp -R "$python_home"/. "$PYTHON_DIR/"
+    _PYTHON_SRC="$python_home"
 }
 
 create_venv() {
@@ -105,13 +100,32 @@ create_venv() {
 
     echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
-    $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
+
+    # Use source Python directly (works with musl), then copy to .python/
+    local python_exe
+    if [ -n "${_PYTHON_SRC:-}" ]; then
+        python_exe="$_PYTHON_SRC/bin/python3"
+    else
+        python_exe="$PYTHON_DIR/bin/python3"
+    fi
+    echo "Using python: $python_exe" >&2
+
+    $uv_cmd venv "$VENV_DIR" --seed --python "$python_exe"
 
     for link in "$VENV_DIR"/bin/python*; do
         [ -L "$link" ] || continue
         rm -f "$link"
         ln -sf "../../.python/bin/python3" "$link"
     done
+
+    # Copy Python to .python/ (for musl case, done after venv to avoid uv issues)
+    if [ -n "${_PYTHON_SRC:-}" ]; then
+        rm -rf "$PYTHON_DIR"
+        mkdir -p "$PYTHON_DIR"
+        echo "Copying Python to $PYTHON_DIR..."
+        cp -R "$_PYTHON_SRC"/. "$PYTHON_DIR/"
+        unset _PYTHON_SRC
+    fi
 
     echo "Reinstalling pip..."
     rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
