@@ -77,13 +77,12 @@ check_ready() {
         return 1
     fi
 
+    # If venv Python works, we're ready
     if [ -x "$VENV_DIR/bin/python" ]; then
-        # Verify the bundled Python actually works (may fail on mismatched glibc)
         if ! "$VENV_DIR/bin/python" -c "" 2>/dev/null; then
             echo "Bundled Python not compatible with this system, rebuilding..."
             return 1
         fi
-        # Only fix paths if venv uses bundled Python
         if [ -L "$VENV_DIR/bin/python" ]; then
             case "$(readlink "$VENV_DIR/bin/python")" in
                 *".python/bin/python3"*) fix_paths ;;
@@ -91,6 +90,26 @@ check_ready() {
         fi
         return 0
     fi
+
+    # Venv python is a broken symlink but bundled Python exists — fix symlinks
+    if [ -x "$PYTHON_DIR/bin/python3" ] && [ -L "$VENV_DIR/bin/python" ]; then
+        case "$(readlink "$VENV_DIR/bin/python")" in
+            *".python/bin/python3"*)
+                for link in "$VENV_DIR"/bin/python*; do
+                    [ -L "$link" ] || continue
+                    rm -f "$link"
+                    ln -sf "../../.python/bin/python3" "$link"
+                done
+                fix_paths
+                if "$VENV_DIR/bin/python" -c "" 2>/dev/null; then
+                    return 0
+                fi
+                echo "Bundled Python not compatible with this system, rebuilding..."
+                return 1
+                ;;
+        esac
+    fi
+
     return 1
 }
 
@@ -183,11 +202,17 @@ create_venv() {
     rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
     $uv_cmd pip install --python "$VENV_DIR/bin/python" pip setuptools wheel
 
-    # If we used the bundled Python, fix pyvenv.cfg paths (bundled Python
-    # was copied to .python/ so it moved from where uv put it originally).
+    # If we used the bundled Python, replace uv's absolute symlinks with
+    # relative ones and fix pyvenv.cfg. This makes the tarball portable —
+    # without it, the venv would hardcode the CI runner's paths.
     # Skip for system Python — its venv paths are already correct.
     case "$python_path" in
         "$PYTHON_DIR"/*)
+            for link in "$VENV_DIR"/bin/python*; do
+                [ -L "$link" ] || continue
+                rm -f "$link"
+                ln -sf "../../.python/bin/python3" "$link"
+            done
             fix_paths
             ;;
     esac
