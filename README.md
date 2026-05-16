@@ -20,7 +20,7 @@ cd pybin
 
 ### 离线安装
 
-从 [Releases](https://github.com/zengzhifei/pybin/releases) 下载对应平台的 `pybin-*.tar.gz`（已内置 Python 环境和依赖，无需联网），解压后执行：
+从 [Releases](https://github.com/zengzhifei/pybin/releases) 下载对应平台的 `pybin-*.tar.gz`，解压后执行：
 
 ```sh
 tar xzf pybin-*.tar.gz
@@ -28,7 +28,11 @@ cd pybin
 ./setup.sh
 ```
 
+包内已内置 Python 环境和依赖。如果系统有更小版本的 python3，setup.sh 会优先使用系统 Python（兼容老系统 glibc）。
+
 ## 更新
+
+重新下载离线包覆盖，或：
 
 ```sh
 cd pybin
@@ -66,8 +70,7 @@ pybin --uninstall
 make push
 
 # 发布新版本
-make release          # 发布新版本
-make rr               # 重新发布
+make release
 ```
 
 ## License
