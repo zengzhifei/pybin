@@ -1745,24 +1745,6 @@ def table2md():
     print(tabulate(rows, headers=headers, tablefmt="github"))
 
 
-def istock():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--min', type=float, required=False)
-    parser.add_argument('code', type=str)
-    args = parser.parse_args()
-
-    url = sdk.get_config("url")
-    url = url.format(code=args.code)
-    resp = requests.get(url)
-    data = resp.text.split("~")
-    if len(data) <= 3:
-        raise RuntimeError('query stock failed')
-
-    price = data[3]
-    if args.min is None or Decimal(price) > Decimal(args.min):
-        print(f"{args.code}: {price}")
-
-
 def tail_f():
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str)

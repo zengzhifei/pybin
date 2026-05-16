@@ -4,11 +4,9 @@
       "s": "alias s='scd'",
       "ll": "alias ll='ls -l'",
       "gt": "alias gt='git status'",
+      "rm": "alias rm='saferm'",
       "jsa": "alias jsa='javaserver --status all'",
       "gsa": "alias gsa='goserver --status all'"
     }
-  },
-  "istock": {
-    "url": "http://qt.gtimg.cn/q={code}"
   }
 }
