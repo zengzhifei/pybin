@@ -80,10 +80,18 @@ setup_python() {
     local uv_cmd="$1"
 
     echo "Installing Python $PYTHON_VERSION..."
-    $uv_cmd python install "$PYTHON_VERSION"
+    if [ -n "${UV_PYTHON_PLATFORM:-}" ]; then
+        $uv_cmd python install --platform "$UV_PYTHON_PLATFORM" "$PYTHON_VERSION"
+    else
+        $uv_cmd python install "$PYTHON_VERSION"
+    fi
 
     local python_bin
-    python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+    if [ -n "${UV_PYTHON_PLATFORM:-}" ]; then
+        python_bin=$($uv_cmd python find --platform "$UV_PYTHON_PLATFORM" "$PYTHON_VERSION")
+    else
+        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+    fi
     local python_home
     python_home="$(dirname "$(dirname "$python_bin")")"
 
