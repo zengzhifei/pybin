@@ -711,10 +711,10 @@ def get_module_funcs_by_ast(py_path: str) -> dict:
     }
 
     class _FuncMeta:
-        __slots__ = ('exit_code',)
+        __slots__ = (RuntimeKey.EXIT_CODE.value,)
 
         def __init__(self, exit_code: int = 0):
-            self.exit_code = exit_code
+            setattr(self, RuntimeKey.EXIT_CODE.value, exit_code)
 
     funcs_map: dict = {}
     with open(py_path) as f:
