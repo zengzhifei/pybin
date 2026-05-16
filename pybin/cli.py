@@ -109,7 +109,15 @@ def pybin():
             if not os.path.exists(profile):
                 continue
             lines = sdk.read_file(profile)
-            new_lines = [l for l in lines if py_profile_str not in l]
+            # Remove the source line and the blank line before it (added by install)
+            new_lines = []
+            for line in lines:
+                if py_profile_str in line:
+                    # Drop the blank line that was added as separator before source
+                    if new_lines and new_lines[-1].strip() == "":
+                        new_lines.pop()
+                    continue
+                new_lines.append(line)
             if len(new_lines) != len(lines):
                 sdk.write_file(profile, new_lines)
                 print(f"Removed from: {profile}")
