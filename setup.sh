@@ -79,7 +79,7 @@ ensure_uv() {
 setup_python() {
     local uv_cmd="$1"
 
-    if [ -n "${MINICONDA_PLATFORM:-}" ]; then
+    if [ "$(uname -s)" = "Linux" ] && [ -n "${MINICONDA_PLATFORM:-}" ]; then
         echo "Installing Miniconda (Linux portable Python)..."
         local mc_url="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
         rm -rf "$PYTHON_DIR"
