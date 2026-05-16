@@ -29,16 +29,9 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Setup environment
-        run: |
-          if [ -n "$PLATFORM" ]; then
-            # Convert uv platform to uv target: x86_64-unknown-linux-musl -> linux-x86_64-musl
-            TARGET=$(echo "$PLATFORM" | sed 's/x86_64-unknown-linux/linux-x86_64/')
-            VER=$(cat .python-version)
-            echo "cpython-$VER-$TARGET" > .python-version
-          fi
-          ./setup.sh --env-only
+        run: ./setup.sh --env-only
         env:
-          PLATFORM: ${{ matrix.uv_platform }}
+          MINICONDA_PLATFORM: ${{ matrix.uv_platform }}
 
       - name: Package
         run: |

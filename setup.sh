@@ -79,20 +79,31 @@ ensure_uv() {
 setup_python() {
     local uv_cmd="$1"
 
+    if [ -n "${MINICONDA_PLATFORM:-}" ]; then
+        echo "Installing Miniconda (Linux portable Python)..."
+        local mc_url="https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh"
+        rm -rf "$PYTHON_DIR"
+        curl -LsSf --connect-timeout 10 --max-time 120 "$mc_url" -o /tmp/miniconda.sh
+        bash /tmp/miniconda.sh -b -p "$PYTHON_DIR"
+        rm -f /tmp/miniconda.sh
+        _PYTHON_SRC="$PYTHON_DIR"
+        return
+    fi
+
     echo "Installing Python $PYTHON_VERSION..."
     $uv_cmd python install "$PYTHON_VERSION"
 
     local python_bin python_home
-    # Target format like "cpython-3.12.9-linux-x86_64-musl" won't be found by `find`
-    if echo "$PYTHON_VERSION" | grep -q '^cpython-'; then
-        python_home="$("$uv_cmd" python dir)/$PYTHON_VERSION"
-    else
-        python_bin=$($uv_cmd python find "$PYTHON_VERSION")
-        python_home="$(dirname "$(dirname "$python_bin")")"
-    fi
+    python_bin=$($uv_cmd python find "$PYTHON_VERSION")
+    python_home="$(dirname "$(dirname "$python_bin")")"
 
     echo "Found python: $python_home" >&2
-    _PYTHON_SRC="$python_home"
+
+    rm -rf "$PYTHON_DIR"
+    mkdir -p "$PYTHON_DIR"
+
+    echo "Copying Python to $PYTHON_DIR..."
+    cp -R "$python_home"/. "$PYTHON_DIR/"
 }
 
 create_venv() {
@@ -100,32 +111,13 @@ create_venv() {
 
     echo "Creating virtual environment..."
     rm -rf "$VENV_DIR"
-
-    # Use source Python directly (works with musl), then copy to .python/
-    local python_exe
-    if [ -n "${_PYTHON_SRC:-}" ]; then
-        python_exe="$_PYTHON_SRC/bin/python3"
-    else
-        python_exe="$PYTHON_DIR/bin/python3"
-    fi
-    echo "Using python: $python_exe" >&2
-
-    $uv_cmd venv "$VENV_DIR" --seed --python "$python_exe"
+    $uv_cmd venv "$VENV_DIR" --seed --python "$PYTHON_DIR/bin/python3"
 
     for link in "$VENV_DIR"/bin/python*; do
         [ -L "$link" ] || continue
         rm -f "$link"
         ln -sf "../../.python/bin/python3" "$link"
     done
-
-    # Copy Python to .python/ (for musl case, done after venv to avoid uv issues)
-    if [ -n "${_PYTHON_SRC:-}" ]; then
-        rm -rf "$PYTHON_DIR"
-        mkdir -p "$PYTHON_DIR"
-        echo "Copying Python to $PYTHON_DIR..."
-        cp -R "$_PYTHON_SRC"/. "$PYTHON_DIR/"
-        unset _PYTHON_SRC
-    fi
 
     echo "Reinstalling pip..."
     rm -rf "$VENV_DIR"/lib/python*/site-packages/pip*
