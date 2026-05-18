@@ -94,6 +94,15 @@ def install_extensions(runtime_dir: Path, shell_lines: list, installed_clis: lis
         if not ext.exists():
             print(f"Warning: extension not found: {ext_path}, skipping.")
             continue
+
+        if not os.access(ext, os.X_OK):
+            answer = input(f"Extension '{ext_path}' is not executable. Grant execute permission? [Y/n] ").strip()
+            if answer.lower() == 'n':
+                print(f"Warning: '{ext_path}' skipped (not executable). Add execute permission manually and reinstall.")
+                continue
+            ext.chmod(ext.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+            print(f"Granted execute permission to '{ext_path}'.")
+
         install_commands(ext, runtime_dir, shell_lines, installed_clis)
 
 
