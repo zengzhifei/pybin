@@ -37,13 +37,13 @@ def copy_lib_files(source_dir: Path, runtime_dir: Path):
     shutil.rmtree(runtime_dir, ignore_errors=True)
     runtime_dir.mkdir(parents=True)
 
-    pkg_dir = runtime_dir / "pybinlib"
-    pkg_dir.mkdir()
+    runtime_lib_dir = runtime_dir / "pybinlib"
+    runtime_lib_dir.mkdir()
     for name in ["sdk.py", "ann.py", "cli.py", "__about__.py", "__init__.py"]:
-        shutil.copy(source_dir / name, pkg_dir)
+        shutil.copy(source_dir / name, runtime_lib_dir)
 
     # Ensure cli.py has the correct shebang
-    cli_path = pkg_dir / "cli.py"
+    cli_path = runtime_lib_dir / "cli.py"
     content = cli_path.read_text()
     if content.startswith("#!/"):
         cli_path.write_text(f"#!{sys.executable}\n" + content.split("\n", 1)[1])
@@ -56,7 +56,7 @@ def copy_lib_files(source_dir: Path, runtime_dir: Path):
     sdk.write_json_file(str(runtime_dir / "config.json"), config)
 
     for name in ["sdk.py", "ann.py", "cli.py", "__about__.py", "__init__.py"]:
-        os.chmod(pkg_dir / name, _file_mode())
+        os.chmod(runtime_lib_dir / name, _file_mode())
     os.chmod(runtime_dir / "config.json", _config_mode())
 
 

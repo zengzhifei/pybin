@@ -60,6 +60,31 @@ pybin --uninstall
 - **安全** — AES 加解密、Git Hook 加解密
 - **其他** — 日期计算、消息推送、邮件发送等
 
+## SDK
+
+pybin 安装后在 `~/.pybin/pybinlib/` 下提供 Python SDK，第三方扩展可直接导入：
+
+```python
+from pybinlib import sdk
+from pybinlib.ann import RuntimeEnv, runtime, RuntimeKey
+```
+
+`PYTHONPATH` 已自动包含 `~/.pybin/`，无需额外配置。
+
+### 编写扩展
+
+扩展模块需定义一个 `cli.py`，使用 `@runtime` 装饰器声明命令。然后在 `~/.pybin_config.json` 中注册路径：
+
+```json
+{
+  "pybin": {
+    "extend_clis": ["/path/to/your/cli.py"]
+  }
+}
+```
+
+重新执行 `./setup.sh`（或 `python3 pybin/install.py`）即可安装扩展命令。
+
 ## 开发
 
 ```sh
