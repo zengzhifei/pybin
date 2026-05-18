@@ -32,16 +32,18 @@ def _make_shell_func(func_name: str, cli_file: str, exit_code: int) -> str:
     ''')
 
 
-def copy_core_files(source_dir: Path, runtime_dir: Path):
-    """Phase 1: Copy core pybin files to ~/.pybin/."""
+def copy_lib_files(source_dir: Path, runtime_dir: Path):
+    """Phase 1: Copy pybin library files to ~/.pybin/pybinlib/."""
     shutil.rmtree(runtime_dir, ignore_errors=True)
     runtime_dir.mkdir(parents=True)
 
-    for name in ["sdk.py", "ann.py", "cli.py", "__about__.py"]:
-        shutil.copy(source_dir / name, runtime_dir)
+    pkg_dir = runtime_dir / "pybinlib"
+    pkg_dir.mkdir()
+    for name in ["sdk.py", "ann.py", "cli.py", "__about__.py", "__init__.py"]:
+        shutil.copy(source_dir / name, pkg_dir)
 
     # Ensure cli.py has the correct shebang
-    cli_path = runtime_dir / "cli.py"
+    cli_path = pkg_dir / "cli.py"
     content = cli_path.read_text()
     if content.startswith("#!/"):
         cli_path.write_text(f"#!{sys.executable}\n" + content.split("\n", 1)[1])
@@ -53,8 +55,8 @@ def copy_core_files(source_dir: Path, runtime_dir: Path):
         sdk.merge_two_levels_dict(config, sdk.read_json_file(str(user_config_file)))
     sdk.write_json_file(str(runtime_dir / "config.json"), config)
 
-    for name in ["sdk.py", "ann.py", "cli.py", "__about__.py"]:
-        os.chmod(runtime_dir / name, _file_mode())
+    for name in ["sdk.py", "ann.py", "cli.py", "__about__.py", "__init__.py"]:
+        os.chmod(pkg_dir / name, _file_mode())
     os.chmod(runtime_dir / "config.json", _config_mode())
 
 
@@ -137,13 +139,13 @@ def install():
     runtime_dir = sdk.get_home() / ".pybin"
 
     # Phase 1
-    copy_core_files(source_dir, runtime_dir)
+    copy_lib_files(source_dir, runtime_dir)
 
     shell_lines = []
     installed_clis = []
 
     # Phase 2
-    install_commands(runtime_dir / "cli.py", runtime_dir, shell_lines, installed_clis)
+    install_commands(runtime_dir / "pybinlib" / "cli.py", runtime_dir, shell_lines, installed_clis)
 
     # Phase 3
     install_extensions(runtime_dir, shell_lines, installed_clis)
