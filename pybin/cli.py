@@ -1813,6 +1813,56 @@ def tail_f():
         time.sleep(0.1)
 
 
+def cc_helper():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--list", action="store_true", help="list available providers")
+    parser.add_argument("--show", action="store_true", help="show current Claude Code model config")
+    parser.add_argument("--switch", choices=list(cast(dict, sdk.get_config(key=None)).keys()), help="switch to a provider")
+    args = parser.parse_args()
+
+    settings_path = os.path.expanduser("~/.claude/settings.json")
+
+    if args.list:
+        print(sdk.format_json(sdk.get_config(key=None)))
+        return
+
+    if args.show:
+        if not os.path.exists(settings_path):
+            print("~/.claude/settings.json not found. Please install Claude Code first.")
+            return
+        settings = sdk.read_json_file(settings_path)
+        env = settings.get("env", {})
+        print(sdk.format_json(env))
+        return
+
+    if args.switch:
+        provider_config = sdk.get_config(args.switch)
+
+        if not provider_config.get("ANTHROPIC_AUTH_TOKEN"):
+            print(f"Error: ANTHROPIC_AUTH_TOKEN not configured for '{args.switch}'.\n"
+                  f"Add it to ~/.pybin_config.json:\n"
+                  f'  {{"cc_helper": {{"{args.switch}": {{"ANTHROPIC_AUTH_TOKEN": "your-key"}}}}}}')
+            return
+
+        if not os.path.exists(os.path.dirname(settings_path)):
+            print("Error: ~/.claude/ not found. Please install Claude Code first.")
+            return
+
+        if not os.path.exists(settings_path):
+            settings = {}
+        else:
+            settings = sdk.read_json_file(settings_path)
+
+        if "env" not in settings:
+            settings["env"] = {}
+
+        settings["env"].update(provider_config)
+        sdk.write_json_file(settings_path, settings)
+
+        print(f"Switched Claude Code to provider: {args.switch}")
+        return
+
+
 def myip():
     print(sdk.get_ip())
 

@@ -253,7 +253,7 @@ def get_config(key: str, is_caller: bool = True, config_file: str = None, defaul
 def merge_two_levels_dict(dict1: dict, dict2: dict) -> None:
     for key, value in dict2.items():
         if isinstance(value, dict) and key in dict1 and isinstance(dict1[key], dict):
-            dict1[key].update(value)
+            merge_two_levels_dict(dict1[key], value)
         else:
             dict1[key] = value
 
