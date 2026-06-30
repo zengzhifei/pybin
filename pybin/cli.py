@@ -1818,9 +1818,21 @@ def cc_helper():
     parser.add_argument("--list", action="store_true", help="list available providers")
     parser.add_argument("--show", action="store_true", help="show current Claude Code model config")
     parser.add_argument("--switch", choices=list(cast(dict, sdk.get_config(key=None)).keys()), help="switch to a provider")
+    parser.add_argument("--reset", action="store_true", help="reset to official Anthropic defaults")
     args = parser.parse_args()
 
     settings_path = os.path.expanduser("~/.claude/settings.json")
+
+    # Known env keys that cc_helper manages (cleared on --reset)
+    _CC_ENV_KEYS = [
+        "ANTHROPIC_BASE_URL",
+        "ANTHROPIC_AUTH_TOKEN",
+        "ANTHROPIC_MODEL",
+        "ANTHROPIC_DEFAULT_OPUS_MODEL",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL",
+        "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+        "CLAUDE_CODE_SUBAGENT_MODEL",
+    ]
 
     if args.list:
         print(sdk.format_json(sdk.get_config(key=None)))
@@ -1833,6 +1845,31 @@ def cc_helper():
         settings = sdk.read_json_file(settings_path)
         env = settings.get("env", {})
         print(sdk.format_json(env))
+        return
+
+    if args.reset:
+        if not os.path.exists(settings_path):
+            print("~/.claude/settings.json not found, nothing to reset.")
+            return
+
+        settings = sdk.read_json_file(settings_path)
+        env = settings.get("env", {})
+
+        removed = [k for k in _CC_ENV_KEYS if k in env]
+        for k in removed:
+            del env[k]
+
+        if not env:
+            del settings["env"]
+        else:
+            settings["env"] = env
+
+        sdk.write_json_file(settings_path, settings)
+
+        if removed:
+            print(f"Reset to official Anthropic defaults. Removed: {', '.join(removed)}")
+        else:
+            print("Already using official Anthropic defaults (no env overrides found).")
         return
 
     if args.switch:
